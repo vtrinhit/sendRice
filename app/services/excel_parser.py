@@ -262,17 +262,12 @@ class ExcelParserService:
         return False
 
 
-async def parse_excel_file(
+def _parse_excel_sync(
     file_path: str,
     sheet_name: str,
     config: Dict[str, Any]
 ) -> Tuple[List[Dict[str, Any]], str]:
-    """
-    Async wrapper for parsing Excel file.
-
-    Returns:
-        Tuple of (employees list, actual sheet name used)
-    """
+    """Synchronous parsing of Excel file."""
     with ExcelParserService(file_path) as parser:
         # If sheet name not specified, use first sheet
         if not sheet_name:
@@ -290,3 +285,18 @@ async def parse_excel_file(
         )
 
         return employees, sheet_name
+
+
+async def parse_excel_file(
+    file_path: str,
+    sheet_name: str,
+    config: Dict[str, Any]
+) -> Tuple[List[Dict[str, Any]], str]:
+    """
+    Async wrapper for parsing Excel file.
+
+    Returns:
+        Tuple of (employees list, actual sheet name used)
+    """
+    import asyncio
+    return await asyncio.to_thread(_parse_excel_sync, file_path, sheet_name, config)

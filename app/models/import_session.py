@@ -23,6 +23,7 @@ class ImportSession(Base):
         default=uuid.uuid4
     )
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sheet_name: Mapped[str] = mapped_column(String(100), nullable=False)
     imported_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -9,7 +9,7 @@ import httpx
 import uuid
 
 from app.config import settings
-from app.schemas.send import WebhookPayload, WebhookResponse, SendResponse
+from app.schemas.send import WebhookResponse, SendResponse
 
 
 class WebhookService:
@@ -31,7 +31,7 @@ class WebhookService:
         phone: str,
         name: str,
         salary: int,
-        image_url: str,
+        image_base64: str,
     ) -> WebhookResponse:
         """
         Send salary notification to a single employee.
@@ -40,7 +40,7 @@ class WebhookService:
             phone: Employee phone number (Zalo)
             name: Employee name
             salary: Salary amount
-            image_url: URL to salary image on Google Drive
+            image_base64: Base64 encoded salary image
 
         Returns:
             WebhookResponse with status and message
@@ -51,12 +51,13 @@ class WebhookService:
                 message="Webhook URL not configured"
             )
 
-        payload = WebhookPayload(
-            SDT=phone,
-            Ten=name,
-            Luong=salary,
-            HinhAnhURL=image_url
-        )
+        # Send base64 image directly in payload
+        payload = {
+            "SDT": phone,
+            "Ten": name,
+            "Luong": salary,
+            "HinhAnh": image_base64  # Base64 image data
+        }
 
         last_error = None
 
@@ -65,7 +66,7 @@ class WebhookService:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.post(
                         self.webhook_url,
-                        json=payload.model_dump(),
+                        json=payload,
                         headers={"Content-Type": "application/json"}
                     )
 
@@ -129,7 +130,7 @@ class WebhookService:
                         message="Missing phone number"
                     )
 
-                if not employee.get("salary_image_url"):
+                if not employee.get("image_base64"):
                     return SendResponse(
                         employee_id=employee_id,
                         status="failed",
@@ -140,7 +141,7 @@ class WebhookService:
                     phone=employee["phone"],
                     name=employee["name"],
                     salary=employee.get("salary", 0),
-                    image_url=employee["salary_image_url"]
+                    image_base64=employee["image_base64"]
                 )
 
                 return SendResponse(

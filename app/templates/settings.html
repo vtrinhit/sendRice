@@ -7,7 +7,7 @@
     <!-- Page Header -->
     <div class="mb-8">
         <h2 class="text-2xl font-bold text-gray-900">Cài Đặt</h2>
-        <p class="text-gray-600 mt-1">Cấu hình import Excel, Google Drive và Webhook</p>
+        <p class="text-gray-600 mt-1">Cấu hình import Excel và Webhook</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -71,11 +71,19 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="form-label">Cột bắt đầu</label>
-                                <input type="text" name="image_start_col" value="{{ excel_config.get('image_start_col', 'A') }}" class="form-input" placeholder="A">
+                                <input type="text" name="image_start_col" value="{{ excel_config.get('image_start_col', 'B') }}" class="form-input" placeholder="B">
                             </div>
                             <div>
                                 <label class="form-label">Cột kết thúc</label>
-                                <input type="text" name="image_end_col" value="{{ excel_config.get('image_end_col', 'G') }}" class="form-input" placeholder="G">
+                                <input type="text" name="image_end_col" value="{{ excel_config.get('image_end_col', 'H') }}" class="form-input" placeholder="H">
+                            </div>
+                            <div>
+                                <label class="form-label">Hàng bắt đầu</label>
+                                <input type="number" name="image_start_row" value="{{ excel_config.get('image_start_row', 4) }}" min="1" class="form-input">
+                            </div>
+                            <div>
+                                <label class="form-label">Hàng kết thúc</label>
+                                <input type="number" name="image_end_row" value="{{ excel_config.get('image_end_row', 29) }}" min="1" class="form-input">
                             </div>
                         </div>
                     </div>
@@ -144,72 +152,6 @@
                             Test
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Google Drive Configuration -->
-        <div class="card lg:col-span-2">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
-                    </svg>
-                    Google Drive
-                </h3>
-                <span class="badge {{ 'badge-green' if gdrive_connected else 'badge-gray' }}">
-                    {{ 'Đã kết nối' if gdrive_connected else 'Chưa kết nối' }}
-                </span>
-            </div>
-            <div class="card-body">
-                <form
-                    hx-post="/api/settings/gdrive"
-                    hx-target="#toast-container"
-                    hx-swap="beforeend"
-                    class="space-y-4"
-                >
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="form-label">Folder ID</label>
-                            <input type="text" name="folder_id" value="{{ gdrive_config.folder_id }}" class="form-input" placeholder="ID thư mục gốc trên Drive">
-                            <p class="text-xs text-gray-500 mt-1">Lấy từ URL thư mục: drive.google.com/drive/folders/<strong>folder_id</strong></p>
-                        </div>
-                        <div class="space-y-3">
-                            <label class="form-label">Cấu trúc thư mục</label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" name="create_year_folders" {{ 'checked' if gdrive_config.create_year_folders else '' }} class="form-checkbox">
-                                <span class="text-sm text-gray-700">Tạo thư mục theo năm (2024/)</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" name="create_month_folders" {{ 'checked' if gdrive_config.create_month_folders else '' }} class="form-checkbox">
-                                <span class="text-sm text-gray-700">Tạo thư mục theo tháng (01/, 02/...)</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {% if not gdrive_connected %}
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div class="flex gap-3">
-                            <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            <div>
-                                <h4 class="font-medium text-yellow-800">Chưa kết nối Google Drive</h4>
-                                <p class="text-sm text-yellow-700 mt-1">
-                                    Để upload ảnh lương, bạn cần tạo file credentials.json và đặt vào thư mục /credentials.
-                                    <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="underline">Tạo credentials tại đây</a>.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <button type="submit" class="btn btn-primary">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Lưu Cấu Hình Drive
-                    </button>
                 </form>
             </div>
         </div>

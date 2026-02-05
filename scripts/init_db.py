@@ -66,17 +66,6 @@ async def init_database():
             )
             session.add(webhook_config)
 
-            # Add default Google Drive config
-            gdrive_config = AppSetting(
-                key="gdrive_config",
-                value={
-                    "folder_id": settings.google_drive_folder_id or "",
-                    "create_year_folders": True,
-                    "create_month_folders": True,
-                }
-            )
-            session.add(gdrive_config)
-
             await session.commit()
             print("      Default settings created!")
         else:

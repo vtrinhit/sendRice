@@ -44,7 +44,7 @@
                     <input
                         type="text"
                         name="sheet_name"
-                        placeholder="Sheet1"
+                        placeholder="Phiếu lương"
                         class="form-input"
                     >
                 </div>
@@ -91,14 +91,14 @@
                         <span x-text="allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'"></span>
                     </button>
                     <button
-                        @click="batchGenerateImages()"
-                        :disabled="selectedCount === 0"
+                        @click="regenerateAll()"
                         class="btn btn-outline btn-sm"
+                        :disabled="isGenerating"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        <svg class="w-4 h-4" :class="{ 'animate-spin': isGenerating }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
-                        Tạo ảnh (<span x-text="selectedCount"></span>)
+                        <span x-text="isGenerating ? 'Đang tạo...' : 'Tạo lại tất cả ảnh'"></span>
                     </button>
                     <button
                         @click="batchSend()"
@@ -110,6 +110,39 @@
                         </svg>
                         Gửi Zalo (<span x-text="selectedCount"></span>)
                     </button>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div x-show="isGenerating || progress.total > 0" x-cloak class="mt-4">
+                <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
+                    <span>Tiến độ tạo ảnh</span>
+                    <span x-text="`${progress.completed + progress.failed}/${progress.total}`"></span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                        class="h-2.5 rounded-full transition-all duration-300"
+                        :class="progress.failed > 0 ? 'bg-yellow-500' : 'bg-green-500'"
+                        :style="`width: ${progress.total > 0 ? ((progress.completed + progress.failed) / progress.total * 100) : 0}%`"
+                    ></div>
+                </div>
+                <div class="flex gap-4 mt-2 text-xs">
+                    <span class="text-green-600" x-show="progress.completed > 0">
+                        <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+                        <span x-text="progress.completed"></span> thành công
+                    </span>
+                    <span class="text-yellow-600" x-show="progress.processing > 0">
+                        <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1 animate-pulse"></span>
+                        <span x-text="progress.processing"></span> đang xử lý
+                    </span>
+                    <span class="text-red-600" x-show="progress.failed > 0">
+                        <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span>
+                        <span x-text="progress.failed"></span> thất bại
+                    </span>
+                    <span class="text-gray-500" x-show="progress.pending > 0">
+                        <span class="inline-block w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
+                        <span x-text="progress.pending"></span> chờ xử lý
+                    </span>
                 </div>
             </div>
         </div>
@@ -149,12 +182,131 @@ function employeeManager() {
         selected: new Set(),
         allSelected: false,
         employees: [],
+        sessionId: '{{ session.id if session else "" }}',
+        isGenerating: false,
+        eventSource: null,
+        progress: {
+            total: 0,
+            completed: 0,
+            failed: 0,
+            processing: 0,
+            pending: 0
+        },
 
         init() {
             // Initialize from DOM
             document.querySelectorAll('[data-employee-id]').forEach(el => {
                 this.employees.push(el.dataset.employeeId);
             });
+
+            // Start SSE connection if session exists
+            if (this.sessionId) {
+                this.connectSSE();
+            }
+
+            // Listen for upload completion to start SSE
+            document.body.addEventListener('htmx:afterSwap', (e) => {
+                if (e.detail.target.id === 'employee-table-container') {
+                    // Re-init employees
+                    this.employees = [];
+                    document.querySelectorAll('[data-employee-id]').forEach(el => {
+                        this.employees.push(el.dataset.employeeId);
+                    });
+                    // Reload page to get session ID for SSE
+                    setTimeout(() => window.location.reload(), 500);
+                }
+            });
+        },
+
+        connectSSE() {
+            if (!this.sessionId || this.eventSource) return;
+
+            this.eventSource = new EventSource(`/session/${this.sessionId}/sse`);
+
+            this.eventSource.addEventListener('init', (e) => {
+                const data = JSON.parse(e.data);
+                this.progress = data.progress;
+                this.isGenerating = data.progress.is_running;
+            });
+
+            this.eventSource.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                this.progress = data.progress;
+                this.isGenerating = true;
+
+                // Update individual row status
+                this.updateRowStatus(data.employee_id, data.status, data.has_image);
+            });
+
+            this.eventSource.addEventListener('complete', (e) => {
+                const data = JSON.parse(e.data);
+                this.progress = data.progress;
+                this.isGenerating = false;
+                this.eventSource.close();
+                this.eventSource = null;
+
+                if (data.completed > 0) {
+                    showToast(`Đã tạo ${data.completed}/${data.total} ảnh thành công`, 'success');
+                }
+                if (data.failed > 0) {
+                    showToast(`${data.failed} ảnh thất bại`, 'error');
+                }
+
+                // Refresh table to get final state
+                setTimeout(() => window.location.reload(), 1000);
+            });
+
+            this.eventSource.addEventListener('ping', () => {
+                // Keepalive
+            });
+
+            this.eventSource.onerror = () => {
+                this.isGenerating = false;
+                if (this.eventSource) {
+                    this.eventSource.close();
+                    this.eventSource = null;
+                }
+            };
+        },
+
+        updateRowStatus(employeeId, status, hasImage) {
+            const row = document.querySelector(`[data-employee-id="${employeeId}"]`);
+            if (!row) return;
+
+            // Find the image status cell (6th td)
+            const statusCell = row.querySelectorAll('td')[5];
+            if (!statusCell) return;
+
+            if (status === 'processing') {
+                statusCell.innerHTML = `
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-100 text-yellow-600" title="Đang tạo ảnh...">
+                        <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                `;
+            } else if (status === 'completed' && hasImage) {
+                statusCell.innerHTML = `
+                    <button
+                        onclick="Alpine.$data(this.closest('[x-data]')).openPreview('${employeeId}')"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                        title="Xem ảnh"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </button>
+                `;
+            } else if (status === 'failed') {
+                statusCell.innerHTML = `
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600" title="Lỗi tạo ảnh">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </span>
+                `;
+            }
         },
 
         get selectedCount() {
@@ -184,28 +336,32 @@ function employeeManager() {
             return this.selected.has(id);
         },
 
-        async batchGenerateImages() {
-            if (this.selected.size === 0) return;
+        async regenerateAll() {
+            if (!this.sessionId || this.isGenerating) return;
 
-            const ids = Array.from(this.selected);
-            showToast('Đang tạo ảnh...', 'info');
+            this.isGenerating = true;
+            showToast('Bắt đầu tạo ảnh cho tất cả nhân viên...', 'info');
 
             try {
-                const response = await fetch('/api/employees/batch/generate-images', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employee_ids: ids })
+                const response = await fetch(`/session/${this.sessionId}/generate-all`, {
+                    method: 'POST'
                 });
-                const result = await response.json();
 
-                if (result.success > 0) {
-                    showToast(`Đã tạo ${result.success}/${result.total} ảnh thành công`, 'success');
-                    htmx.trigger('#employee-table-container', 'refresh');
+                if (response.ok) {
+                    // Reconnect SSE to track progress
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                        this.eventSource = null;
+                    }
+                    this.connectSSE();
                 } else {
-                    showToast('Không thể tạo ảnh', 'error');
+                    const error = await response.json();
+                    showToast('Lỗi: ' + (error.detail || 'Không thể tạo ảnh'), 'error');
+                    this.isGenerating = false;
                 }
             } catch (error) {
                 showToast('Lỗi: ' + error.message, 'error');
+                this.isGenerating = false;
             }
         },
 

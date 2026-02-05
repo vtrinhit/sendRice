@@ -38,6 +38,13 @@ class Employee(Base):
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
     salary: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     salary_image_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Image generation status: pending, processing, completed, failed
+    image_status: Mapped[str] = mapped_column(
+        String(20),
+        default="pending",
+        server_default="pending"
+    )
+    image_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()

@@ -3,7 +3,7 @@ Settings Router
 Handles application configuration.
 """
 from typing import Optional
-from fastapi import APIRouter, Request, Depends, HTTPException
+from fastapi import APIRouter, Request, Depends, HTTPException, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,10 +14,7 @@ from app.models import AppSetting
 from app.schemas.settings import (
     ExcelConfigSchema,
     WebhookConfigSchema,
-    GoogleDriveConfigSchema,
-    AllSettingsResponse
 )
-from app.services.gdrive_service import gdrive_service
 from app.services.webhook_service import webhook_service
 from app.config import settings
 
@@ -75,20 +72,12 @@ async def settings_page(
         "retry_count": 3
     }
 
-    gdrive_config = await get_setting(db, "gdrive_config") or {
-        "folder_id": settings.google_drive_folder_id or "",
-        "create_year_folders": True,
-        "create_month_folders": True
-    }
-
     return templates.TemplateResponse(
         "settings.html",
         {
             "request": request,
             "excel_config": excel_config,
             "webhook_config": webhook_config,
-            "gdrive_config": gdrive_config,
-            "gdrive_connected": gdrive_service.is_configured(),
             "webhook_configured": webhook_service.is_configured(),
         }
     )
@@ -101,7 +90,6 @@ async def get_all_settings(
     """Get all application settings."""
     excel_config = await get_setting(db, "excel_config") or {}
     webhook_config = await get_setting(db, "webhook_config")
-    gdrive_config = await get_setting(db, "gdrive_config")
 
     return {
         "excel_config": ExcelConfigSchema(**{
@@ -115,17 +103,39 @@ async def get_all_settings(
             **excel_config
         }),
         "webhook_config": WebhookConfigSchema(**webhook_config) if webhook_config else None,
-        "gdrive_config": GoogleDriveConfigSchema(**gdrive_config) if gdrive_config else None,
     }
 
 
 @router.post("/excel")
 async def update_excel_config(
-    config: ExcelConfigSchema,
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    sheet_name: str = Form("Sheet1"),
+    header_row: int = Form(1),
+    data_start_row: int = Form(2),
+    code_column: str = Form("A"),
+    name_column: str = Form("B"),
+    phone_column: str = Form("C"),
+    salary_column: str = Form("D"),
+    image_start_col: str = Form("B"),
+    image_end_col: str = Form("H"),
+    image_start_row: int = Form(4),
+    image_end_row: int = Form(29),
 ):
     """Update Excel import configuration."""
+    config = ExcelConfigSchema(
+        sheet_name=sheet_name,
+        header_row=header_row,
+        data_start_row=data_start_row,
+        code_column=code_column,
+        name_column=name_column,
+        phone_column=phone_column,
+        salary_column=salary_column,
+        image_start_col=image_start_col,
+        image_end_col=image_end_col,
+        image_start_row=image_start_row,
+        image_end_row=image_end_row,
+    )
     await set_setting(db, "excel_config", config.model_dump())
 
     if request.headers.get("HX-Request"):
@@ -175,47 +185,3 @@ async def test_webhook(
     """Test webhook connectivity."""
     result = await webhook_service.test_webhook()
     return result
-
-
-@router.post("/gdrive")
-async def update_gdrive_config(
-    config: GoogleDriveConfigSchema,
-    request: Request,
-    db: AsyncSession = Depends(get_db)
-):
-    """Update Google Drive configuration."""
-    await set_setting(db, "gdrive_config", config.model_dump())
-
-    if request.headers.get("HX-Request"):
-        return templates.TemplateResponse(
-            "partials/toast.html",
-            {
-                "request": request,
-                "message": "Cấu hình Google Drive đã được lưu",
-                "type": "success"
-            }
-        )
-
-    return {"status": "success", "message": "Google Drive configuration updated"}
-
-
-@router.get("/gdrive/status")
-async def gdrive_status():
-    """Check Google Drive connection status."""
-    return {
-        "configured": gdrive_service.is_configured(),
-        "folder_id": settings.google_drive_folder_id
-    }
-
-
-@router.get("/gdrive/files")
-async def list_gdrive_files():
-    """List files in the configured Google Drive folder."""
-    if not gdrive_service.is_configured():
-        raise HTTPException(
-            status_code=400,
-            detail="Google Drive not configured"
-        )
-
-    files = gdrive_service.list_files()
-    return {"files": files}

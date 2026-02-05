@@ -23,16 +23,6 @@ class Settings(BaseSettings):
         alias="SECRET_KEY"
     )
 
-    # Google Drive
-    google_credentials_file: Optional[str] = Field(
-        default=None,
-        alias="GOOGLE_CREDENTIALS_FILE"
-    )
-    google_drive_folder_id: Optional[str] = Field(
-        default=None,
-        alias="GOOGLE_DRIVE_FOLDER_ID"
-    )
-
     # n8n Webhook
     n8n_webhook_url: Optional[str] = Field(
         default=None,
@@ -50,7 +40,7 @@ class Settings(BaseSettings):
     temp_images_dir: str = "temp_images"
 
     # Excel defaults
-    default_sheet_name: str = "Sheet1"
+    default_sheet_name: str = "Danh sách NV"
     default_name_column: str = "B"
     default_phone_column: str = "C"
     default_salary_column: str = "D"

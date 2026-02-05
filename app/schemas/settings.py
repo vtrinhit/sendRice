@@ -37,10 +37,10 @@ class ExcelConfigSchema(BaseModel):
     phone_column: str = Field(default="C", description="Cột số điện thoại")
     salary_column: str = Field(default="D", description="Cột lương")
     # Image generation config
-    image_start_row: Optional[int] = Field(default=None, description="Hàng bắt đầu cho ảnh lương")
-    image_end_row: Optional[int] = Field(default=None, description="Hàng kết thúc cho ảnh lương")
-    image_start_col: str = Field(default="A", description="Cột bắt đầu cho ảnh lương")
-    image_end_col: str = Field(default="G", description="Cột kết thúc cho ảnh lương")
+    image_start_row: int = Field(default=4, description="Hàng bắt đầu cho ảnh lương", ge=1)
+    image_end_row: int = Field(default=29, description="Hàng kết thúc cho ảnh lương", ge=1)
+    image_start_col: str = Field(default="B", description="Cột bắt đầu cho ảnh lương")
+    image_end_col: str = Field(default="H", description="Cột kết thúc cho ảnh lương")
 
 
 class WebhookConfigSchema(BaseModel):
@@ -50,15 +50,7 @@ class WebhookConfigSchema(BaseModel):
     retry_count: int = Field(default=3, description="Số lần thử lại", ge=0, le=5)
 
 
-class GoogleDriveConfigSchema(BaseModel):
-    """Schema for Google Drive configuration."""
-    folder_id: Optional[str] = Field(default=None, description="ID thư mục Drive gốc")
-    create_year_folders: bool = Field(default=True, description="Tạo thư mục theo năm")
-    create_month_folders: bool = Field(default=True, description="Tạo thư mục theo tháng")
-
-
 class AllSettingsResponse(BaseModel):
     """Schema for all settings response."""
     excel_config: ExcelConfigSchema
     webhook_config: Optional[WebhookConfigSchema] = None
-    gdrive_config: Optional[GoogleDriveConfigSchema] = None

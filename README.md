@@ -7,11 +7,10 @@ SendRice là ứng dụng web giúp HR/Kế toán gửi thông báo lương đ�
 ## Tính Năng
 
 - **Import Excel** - Upload file Excel, tự động parse danh sách nhân viên
-- **Tạo ảnh bảng lương** - Chuyển đổi dữ liệu Excel thành ảnh PNG đẹp mắt
-- **Upload Google Drive** - Tự động upload ảnh lên Drive với cấu trúc thư mục theo năm/tháng
-- **Gửi Zalo qua n8n** - Tích hợp webhook n8n để gửi tin nhắn Zalo
-- **Batch processing** - Chọn nhiều nhân viên và gửi hàng loạt
-- **Cấu hình linh hoạt** - Tùy chỉnh mapping cột Excel, webhook URL, Drive folder
+- **Tạo ảnh bảng lương** - Chuyển đổi sheet phiếu lương thành ảnh PNG
+- **Gửi Zalo qua n8n** - Tích hợp webhook n8n để gửi tin nhắn Zalo kèm ảnh base64
+- **Batch processing** - Chọn nhiều nhân viên và xử lý hàng loạt
+- **Cấu hình linh hoạt** - Tùy chỉnh mapping cột Excel, webhook URL
 
 ## Tech Stack
 
@@ -19,15 +18,15 @@ SendRice là ứng dụng web giúp HR/Kế toán gửi thông báo lương đ�
 |-----------|------------|
 | Backend | Python 3.11 + FastAPI |
 | Frontend | Jinja2 + HTMX + Alpine.js |
-| Database | PostgreSQL 15 |
+| Database | PostgreSQL 16 |
 | Excel | openpyxl |
-| Image Gen | html2image (Chromium) |
+| Image Gen | LibreOffice + PyMuPDF |
 | Container | Docker Compose |
 
 ## Yêu Cầu
 
 - Docker & Docker Compose
-- Google Cloud credentials (cho Google Drive API)
+- LibreOffice (local dev only - included in Docker)
 - n8n instance với Zalo webhook
 
 ## Cài Đặt
@@ -54,22 +53,11 @@ DB_PASSWORD=your_secure_password_here
 # Application
 SECRET_KEY=your_secret_key_min_32_characters
 
-# Google Drive (optional)
-GOOGLE_DRIVE_FOLDER_ID=your_folder_id
-
 # n8n Webhook
 N8N_WEBHOOK_URL=https://your-n8n.com/webhook/send-zalo
 ```
 
-### 3. Cấu hình Google Drive (Optional)
-
-1. Tạo project trên [Google Cloud Console](https://console.cloud.google.com/)
-2. Enable Google Drive API
-3. Tạo Service Account và download JSON key
-4. Đặt file vào `credentials/google_credentials.json`
-5. Share folder Drive với email của Service Account
-
-### 4. Chạy ứng dụng
+### 3. Chạy ứng dụng
 
 ```bash
 # Development (không có nginx)
@@ -79,13 +67,13 @@ docker-compose up -d app db
 docker-compose up -d
 ```
 
-### 5. Khởi tạo database
+### 3. Khởi tạo database
 
 ```bash
 docker-compose exec app python scripts/init_db.py
 ```
 
-### 6. Truy cập
+### 4. Truy cập
 
 - Development: http://localhost:8000
 - Production: https://your-domain.com
@@ -150,7 +138,7 @@ Vào **Cài đặt** > **Cấu hình Excel**:
     "SDT": "0901234567",
     "Ten": "Nguyen Van A",
     "Luong": 15000000,
-    "HinhAnhURL": "https://drive.google.com/uc?id=xxx"
+    "HinhAnhBase64": "data:image/png;base64,iVBORw0KGgoAAAANS..."
 }
 ```
 
@@ -212,6 +200,9 @@ sendRice/
 # 1. Tạo virtual environment
 python -m venv venv
 source venv/bin/activate
+or
+venv\Scripts\activate
+
 
 # 2. Install dependencies
 pip install -r requirements.txt
@@ -236,11 +227,11 @@ pytest tests/ -v
 
 ## Troubleshooting
 
-### Lỗi "Chromium not found"
+### Lỗi "LibreOffice not found"
 
 ```bash
-# Trong Docker, đã cài sẵn. Nếu chạy local:
-apt-get install chromium chromium-driver
+# Windows: Cài LibreOffice từ https://www.libreoffice.org/download
+# Trong Docker đã cài sẵn
 ```
 
 ### Lỗi kết nối database
@@ -254,12 +245,6 @@ docker-compose down -v
 docker-compose up -d
 docker-compose exec app python scripts/init_db.py --reset
 ```
-
-### Lỗi Google Drive
-
-1. Kiểm tra file credentials tồn tại
-2. Kiểm tra Service Account có quyền truy cập folder
-3. Kiểm tra Drive API đã được enable
 
 ## Contributing
 

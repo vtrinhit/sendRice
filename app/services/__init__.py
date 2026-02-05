@@ -1,12 +1,12 @@
 # Services package
 from app.services.excel_parser import ExcelParserService
-from app.services.image_generator import ImageGeneratorService
-from app.services.gdrive_service import GoogleDriveService
+from app.services.salary_slip_service_optimized import OptimizedSalarySlipService
 from app.services.webhook_service import WebhookService
+from app.services.background_image_service import BackgroundImageService
 
 __all__ = [
     "ExcelParserService",
-    "ImageGeneratorService",
-    "GoogleDriveService",
-    "WebhookService"
+    "OptimizedSalarySlipService",
+    "WebhookService",
+    "BackgroundImageService"
 ]

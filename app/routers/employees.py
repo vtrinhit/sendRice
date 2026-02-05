@@ -16,10 +16,8 @@ from app.database import get_db
 from app.models import Employee, SendHistory, ImportSession, AppSetting
 from app.schemas.employee import EmployeeResponse, EmployeeUpdateRequest
 from app.schemas.send import SendRequest, SendResponse, BatchSendRequest, BatchSendResponse
-from app.services.image_generator import image_generator
-from app.services.gdrive_service import gdrive_service
+from app.services.salary_slip_service_optimized import optimized_salary_slip_service
 from app.services.webhook_service import webhook_service
-from app.services.excel_parser import ExcelParserService
 from app.config import settings
 
 
@@ -96,8 +94,8 @@ async def generate_salary_image(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate salary image for an employee."""
-    # Get employee with session
+    """Generate salary image for an employee using Excel salary slip sheet."""
+    # Get employee with session (need session.file_path)
     result = await db.execute(
         select(Employee)
         .options(selectinload(Employee.session))
@@ -108,53 +106,61 @@ async def generate_salary_image(
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
 
-    # Get Excel config for image generation
-    config_result = await db.execute(
-        select(AppSetting).where(AppSetting.key == "excel_config")
-    )
-    config_setting = config_result.scalar_one_or_none()
-    config = config_setting.value if config_setting else {}
-
-    # Generate salary image
-    employee_data = {
-        "employee_code": employee.employee_code,
-        "salary": employee.salary,
-        "row_number": employee.row_number,
-    }
-
-    try:
-        image_path = image_generator.generate_salary_image(
-            employee_name=employee.name,
-            employee_data=employee_data,
+    # Check if Excel file exists
+    if not employee.session or not employee.session.file_path:
+        raise HTTPException(
+            status_code=400,
+            detail="Excel file not found. Please re-upload the file."
         )
 
-        # Upload to Google Drive if configured
-        if gdrive_service.is_configured():
-            filename = f"salary_{employee.employee_code or employee.name}_{uuid.uuid4().hex[:8]}.png"
-            file_id, image_url = gdrive_service.upload_file(
-                file_path=image_path,
-                filename=filename
-            )
+    if not os.path.exists(employee.session.file_path):
+        raise HTTPException(
+            status_code=400,
+            detail="Excel file has been deleted. Please re-upload."
+        )
 
-            # Update employee with image URL
-            employee.salary_image_url = image_url
-            await db.commit()
+    # Check employee code is available
+    if not employee.employee_code:
+        raise HTTPException(
+            status_code=400,
+            detail="Employee code is required for image generation"
+        )
 
-            # Clean up local file
-            image_generator.cleanup_image(image_path)
+    # Get image config from settings
+    setting_result = await db.execute(
+        select(AppSetting).where(AppSetting.key == "excel_config")
+    )
+    setting = setting_result.scalar_one_or_none()
+    image_config = None
+    if setting and setting.value:
+        image_config = {
+            "image_start_col": setting.value.get("image_start_col", "B"),
+            "image_end_col": setting.value.get("image_end_col", "H"),
+            "image_start_row": setting.value.get("image_start_row", 4),
+            "image_end_row": setting.value.get("image_end_row", 29),
+        }
 
-            return {
-                "status": "success",
-                "image_url": image_url,
-                "file_id": file_id
-            }
-        else:
-            # Return local path (for development/preview)
-            return {
-                "status": "success",
-                "image_path": image_path,
-                "message": "Google Drive not configured, image stored locally"
-            }
+    try:
+        # Generate salary slip image using LibreOffice
+        base64_image, salary_from_excel = optimized_salary_slip_service.generate_single(
+            excel_file_path=employee.session.file_path,
+            employee_code=employee.employee_code,
+            image_config=image_config
+        )
+
+        # Update employee with salary from E24 if available
+        if salary_from_excel is not None:
+            employee.salary = salary_from_excel
+
+        # Store base64 image as data URL for preview
+        employee.salary_image_url = f"data:image/png;base64,{base64_image}"
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": "Salary image generated successfully",
+            "salary": salary_from_excel
+        }
 
     except Exception as e:
         raise HTTPException(
@@ -192,6 +198,13 @@ async def send_notification(
             detail="Salary image not generated. Generate image first."
         )
 
+    # Extract base64 from data URL if present
+    image_data = employee.salary_image_url
+    if image_data.startswith("data:image/png;base64,"):
+        image_base64 = image_data.replace("data:image/png;base64,", "")
+    else:
+        image_base64 = image_data
+
     # Create send history record
     send_record = SendHistory(
         employee_id=employee.id,
@@ -201,12 +214,12 @@ async def send_notification(
     await db.commit()
 
     try:
-        # Send via webhook
+        # Send via webhook with base64 image
         response = await webhook_service.send_notification(
             phone=employee.phone,
             name=employee.name,
             salary=employee.salary or 0,
-            image_url=employee.salary_image_url
+            image_base64=image_base64
         )
 
         # Update send history
@@ -253,10 +266,26 @@ async def batch_generate_images(
     """Generate salary images for multiple employees."""
     results = []
 
+    # Get image config from settings once
+    setting_result = await db.execute(
+        select(AppSetting).where(AppSetting.key == "excel_config")
+    )
+    setting = setting_result.scalar_one_or_none()
+    image_config = None
+    if setting and setting.value:
+        image_config = {
+            "image_start_col": setting.value.get("image_start_col", "B"),
+            "image_end_col": setting.value.get("image_end_col", "H"),
+            "image_start_row": setting.value.get("image_start_row", 4),
+            "image_end_row": setting.value.get("image_end_row", 29),
+        }
+
     for emp_id in data.employee_ids:
         try:
             result = await db.execute(
-                select(Employee).where(Employee.id == emp_id)
+                select(Employee)
+                .options(selectinload(Employee.session))
+                .where(Employee.id == emp_id)
             )
             employee = result.scalar_one_or_none()
 
@@ -268,40 +297,48 @@ async def batch_generate_images(
                 })
                 continue
 
-            # Generate image
-            employee_data = {
-                "employee_code": employee.employee_code,
-                "salary": employee.salary,
-                "row_number": employee.row_number,
-            }
+            # Check Excel file
+            if not employee.session or not employee.session.file_path:
+                results.append({
+                    "employee_id": str(emp_id),
+                    "status": "failed",
+                    "message": "Excel file not found"
+                })
+                continue
 
-            image_path = image_generator.generate_salary_image(
-                employee_name=employee.name,
-                employee_data=employee_data,
+            if not os.path.exists(employee.session.file_path):
+                results.append({
+                    "employee_id": str(emp_id),
+                    "status": "failed",
+                    "message": "Excel file has been deleted"
+                })
+                continue
+
+            if not employee.employee_code:
+                results.append({
+                    "employee_id": str(emp_id),
+                    "status": "failed",
+                    "message": "Employee code is required"
+                })
+                continue
+
+            # Generate salary slip image
+            base64_image, salary_from_excel = optimized_salary_slip_service.generate_single(
+                excel_file_path=employee.session.file_path,
+                employee_code=employee.employee_code,
+                image_config=image_config
             )
 
-            # Upload to Google Drive
-            if gdrive_service.is_configured():
-                filename = f"salary_{employee.employee_code or employee.name}_{uuid.uuid4().hex[:8]}.png"
-                file_id, image_url = gdrive_service.upload_file(
-                    file_path=image_path,
-                    filename=filename
-                )
-                employee.salary_image_url = image_url
-                image_generator.cleanup_image(image_path)
+            # Update employee
+            if salary_from_excel is not None:
+                employee.salary = salary_from_excel
+            employee.salary_image_url = f"data:image/png;base64,{base64_image}"
 
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "success",
-                    "image_url": image_url
-                })
-            else:
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "success",
-                    "image_path": image_path,
-                    "message": "Stored locally (Google Drive not configured)"
-                })
+            results.append({
+                "employee_id": str(emp_id),
+                "status": "success",
+                "salary": salary_from_excel
+            })
 
         except Exception as e:
             results.append({
@@ -337,12 +374,20 @@ async def batch_send_notifications(
     # Prepare employee data for batch send
     employees_data = []
     for emp in employees:
+        # Extract base64 from data URL
+        image_base64 = None
+        if emp.salary_image_url:
+            if emp.salary_image_url.startswith("data:image/png;base64,"):
+                image_base64 = emp.salary_image_url.replace("data:image/png;base64,", "")
+            else:
+                image_base64 = emp.salary_image_url
+
         employees_data.append({
             "id": emp.id,
             "phone": emp.phone,
             "name": emp.name,
             "salary": emp.salary,
-            "salary_image_url": emp.salary_image_url,
+            "image_base64": image_base64,
         })
 
     # Send batch
