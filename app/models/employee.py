@@ -42,7 +42,8 @@ class Employee(Base):
     image_status: Mapped[str] = mapped_column(
         String(20),
         default="pending",
-        server_default="pending"
+        server_default="pending",
+        index=True
     )
     image_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(

@@ -9,6 +9,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
+import logging
+
 from app.database import get_db
 from app.models import AppSetting
 from app.schemas.settings import (
@@ -17,6 +19,8 @@ from app.schemas.settings import (
 )
 from app.services.webhook_service import webhook_service
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
@@ -153,12 +157,21 @@ async def update_excel_config(
 
 @router.post("/webhook")
 async def update_webhook_config(
-    config: WebhookConfigSchema,
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    webhook_url: str = Form(""),
+    timeout: int = Form(30),
+    retry_count: int = Form(3),
 ):
     """Update webhook configuration."""
+    logger.info(f"Updating webhook config: url={webhook_url}, timeout={timeout}, retry={retry_count}")
+    config = WebhookConfigSchema(
+        webhook_url=webhook_url,
+        timeout=timeout,
+        retry_count=retry_count,
+    )
     await set_setting(db, "webhook_config", config.model_dump())
+    logger.info("Webhook config saved to database")
 
     # Update the service
     webhook_service.webhook_url = config.webhook_url

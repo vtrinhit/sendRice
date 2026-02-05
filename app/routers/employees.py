@@ -2,9 +2,10 @@
 Employees Router
 Handles employee CRUD and sending operations.
 """
+import asyncio
 import os
 import uuid
-from typing import List, Optional
+from typing import Dict, List, Optional
 from fastapi import APIRouter, Request, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -16,9 +17,10 @@ from app.database import get_db
 from app.models import Employee, SendHistory, ImportSession, AppSetting
 from app.schemas.employee import EmployeeResponse, EmployeeUpdateRequest
 from app.schemas.send import SendRequest, SendResponse, BatchSendRequest, BatchSendResponse
-from app.services.salary_slip_service_optimized import optimized_salary_slip_service
+from app.services.salary_slip_service_optimized import optimized_salary_slip_service, OptimizedSalarySlipService
 from app.services.webhook_service import webhook_service
 from app.config import settings
+from app.helpers import get_image_config
 
 
 router = APIRouter()
@@ -127,18 +129,7 @@ async def generate_salary_image(
         )
 
     # Get image config from settings
-    setting_result = await db.execute(
-        select(AppSetting).where(AppSetting.key == "excel_config")
-    )
-    setting = setting_result.scalar_one_or_none()
-    image_config = None
-    if setting and setting.value:
-        image_config = {
-            "image_start_col": setting.value.get("image_start_col", "B"),
-            "image_end_col": setting.value.get("image_end_col", "H"),
-            "image_start_row": setting.value.get("image_start_row", 4),
-            "image_end_row": setting.value.get("image_end_row", 29),
-        }
+    image_config = await get_image_config(db)
 
     try:
         # Generate salary slip image using LibreOffice
@@ -263,93 +254,125 @@ async def batch_generate_images(
     data: BatchSendRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    """Generate salary images for multiple employees."""
-    results = []
+    """Generate salary images for multiple employees using batch processing."""
+    # Get image config once
+    image_config = await get_image_config(db)
 
-    # Get image config from settings once
-    setting_result = await db.execute(
-        select(AppSetting).where(AppSetting.key == "excel_config")
+    # Fetch all employees with their sessions in a single query
+    result = await db.execute(
+        select(Employee)
+        .options(selectinload(Employee.session))
+        .where(Employee.id.in_(data.employee_ids))
     )
-    setting = setting_result.scalar_one_or_none()
-    image_config = None
-    if setting and setting.value:
-        image_config = {
-            "image_start_col": setting.value.get("image_start_col", "B"),
-            "image_end_col": setting.value.get("image_end_col", "H"),
-            "image_start_row": setting.value.get("image_start_row", 4),
-            "image_end_row": setting.value.get("image_end_row", 29),
-        }
+    employees = result.scalars().all()
+
+    # Build employee lookup by ID
+    emp_by_id = {emp.id: emp for emp in employees}
+
+    # Track validation errors and group valid employees by Excel file
+    validation_errors: List[Dict] = []
+    employees_by_file: Dict[str, List[Employee]] = {}
 
     for emp_id in data.employee_ids:
-        try:
-            result = await db.execute(
-                select(Employee)
-                .options(selectinload(Employee.session))
-                .where(Employee.id == emp_id)
-            )
-            employee = result.scalar_one_or_none()
+        emp = emp_by_id.get(emp_id)
 
-            if not employee:
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "failed",
-                    "message": "Employee not found"
-                })
-                continue
-
-            # Check Excel file
-            if not employee.session or not employee.session.file_path:
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "failed",
-                    "message": "Excel file not found"
-                })
-                continue
-
-            if not os.path.exists(employee.session.file_path):
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "failed",
-                    "message": "Excel file has been deleted"
-                })
-                continue
-
-            if not employee.employee_code:
-                results.append({
-                    "employee_id": str(emp_id),
-                    "status": "failed",
-                    "message": "Employee code is required"
-                })
-                continue
-
-            # Generate salary slip image
-            base64_image, salary_from_excel = optimized_salary_slip_service.generate_single(
-                excel_file_path=employee.session.file_path,
-                employee_code=employee.employee_code,
-                image_config=image_config
-            )
-
-            # Update employee
-            if salary_from_excel is not None:
-                employee.salary = salary_from_excel
-            employee.salary_image_url = f"data:image/png;base64,{base64_image}"
-
-            results.append({
-                "employee_id": str(emp_id),
-                "status": "success",
-                "salary": salary_from_excel
-            })
-
-        except Exception as e:
-            results.append({
+        if not emp:
+            validation_errors.append({
                 "employee_id": str(emp_id),
                 "status": "failed",
-                "message": str(e)
+                "message": "Employee not found"
             })
+            continue
+
+        if not emp.session or not emp.session.file_path:
+            validation_errors.append({
+                "employee_id": str(emp.id),
+                "status": "failed",
+                "message": "Excel file not found"
+            })
+            continue
+
+        if not os.path.exists(emp.session.file_path):
+            validation_errors.append({
+                "employee_id": str(emp.id),
+                "status": "failed",
+                "message": "Excel file has been deleted"
+            })
+            continue
+
+        if not emp.employee_code:
+            validation_errors.append({
+                "employee_id": str(emp.id),
+                "status": "failed",
+                "message": "Employee code is required"
+            })
+            continue
+
+        # Group by file path for batch processing
+        file_path = emp.session.file_path
+        if file_path not in employees_by_file:
+            employees_by_file[file_path] = []
+        employees_by_file[file_path].append(emp)
+
+    # Process each file group using batch generation
+    results: List[Dict] = list(validation_errors)
+    service = OptimizedSalarySlipService()
+
+    for file_path, emps in employees_by_file.items():
+        # Build code to employee mapping
+        code_to_emp = {emp.employee_code: emp for emp in emps}
+        employee_codes = list(code_to_emp.keys())
+
+        try:
+            # Run batch generation in executor (CPU-bound work)
+            loop = asyncio.get_event_loop()
+            batch_results = await loop.run_in_executor(
+                None,
+                lambda fp=file_path, codes=employee_codes, cfg=image_config: service.generate_batch(fp, codes, cfg)
+            )
+
+            # Process batch results
+            for batch_result in batch_results:
+                emp = code_to_emp.get(batch_result.employee_code)
+                if not emp:
+                    continue
+
+                if batch_result.success:
+                    emp.salary_image_url = f"data:image/png;base64,{batch_result.base64_image}"
+                    if batch_result.salary is not None:
+                        emp.salary = batch_result.salary
+                    emp.image_status = "completed"
+                    emp.image_error = None
+
+                    results.append({
+                        "employee_id": str(emp.id),
+                        "status": "success",
+                        "salary": batch_result.salary
+                    })
+                else:
+                    emp.image_status = "failed"
+                    emp.image_error = batch_result.error
+
+                    results.append({
+                        "employee_id": str(emp.id),
+                        "status": "failed",
+                        "message": batch_result.error
+                    })
+
+        except Exception as e:
+            # Mark all employees in this batch as failed
+            for emp in emps:
+                emp.image_status = "failed"
+                emp.image_error = str(e)
+                results.append({
+                    "employee_id": str(emp.id),
+                    "status": "failed",
+                    "message": str(e)
+                })
 
     await db.commit()
 
-    success_count = sum(1 for r in results if r["status"] == "success")
+    success_count = sum(1 for r in results if r.get("status") == "success")
     return {
         "total": len(data.employee_ids),
         "success": success_count,

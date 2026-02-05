@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     temp_images_dir: str = "temp_images"
 
+    # Logging
+    log_level: str = Field(default="INFO", alias="LOG_LEVEL")
+
     # Excel defaults
     default_sheet_name: str = "Danh sách NV"
     default_name_column: str = "B"

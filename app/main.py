@@ -2,6 +2,7 @@
 SendRice - Salary Notification Tool
 FastAPI Application Entry Point
 """
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -14,14 +15,32 @@ from app.routers import employees as employees_router
 from app.routers import settings as settings_router
 
 
+def configure_logging():
+    """Configure application logging."""
+    log_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+
+
+configure_logging()
+logger = logging.getLogger(__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown events."""
+    logger.info("Starting SendRice application...")
     # Startup: Create database tables
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    logger.info("Database tables created/verified")
     yield
     # Shutdown: Clean up resources
+    logger.info("Shutting down SendRice application...")
     await engine.dispose()
 
 

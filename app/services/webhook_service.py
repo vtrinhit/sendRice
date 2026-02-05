@@ -53,10 +53,10 @@ class WebhookService:
 
         # Send base64 image directly in payload
         payload = {
-            "SDT": phone,
-            "Ten": name,
-            "Luong": salary,
-            "HinhAnh": image_base64  # Base64 image data
+            "sdt": phone,
+            "ten": name,
+            "luong": salary,
+            "hinhanh": image_base64  # Base64 image data
         }
 
         last_error = None

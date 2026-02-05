@@ -21,6 +21,7 @@ from app.config import settings
 from app.models import ImportSession, Employee, AppSetting
 from app.services.excel_parser import parse_excel_file, ExcelParserService
 from app.services.background_image_service import background_image_service
+from app.helpers import get_image_config
 
 
 router = APIRouter()
@@ -157,18 +158,7 @@ async def upload_excel(
         await db.commit()
 
         # Get image config for auto-generation
-        image_config = None
-        setting_result = await db.execute(
-            select(AppSetting).where(AppSetting.key == "excel_config")
-        )
-        setting = setting_result.scalar_one_or_none()
-        if setting and setting.value:
-            image_config = {
-                "image_start_col": setting.value.get("image_start_col", "B"),
-                "image_end_col": setting.value.get("image_end_col", "H"),
-                "image_start_row": setting.value.get("image_start_row", 4),
-                "image_end_row": setting.value.get("image_end_row", 29),
-            }
+        image_config = await get_image_config(db)
 
         # Query employee records for background generation
         emp_result_for_gen = await db.execute(
@@ -338,18 +328,7 @@ async def generate_all_images(
         raise HTTPException(status_code=400, detail="No employees found")
 
     # Get image config
-    setting_result = await db.execute(
-        select(AppSetting).where(AppSetting.key == "excel_config")
-    )
-    setting = setting_result.scalar_one_or_none()
-    image_config = None
-    if setting and setting.value:
-        image_config = {
-            "image_start_col": setting.value.get("image_start_col", "B"),
-            "image_end_col": setting.value.get("image_end_col", "H"),
-            "image_start_row": setting.value.get("image_start_row", 4),
-            "image_end_row": setting.value.get("image_end_row", 29),
-        }
+    image_config = await get_image_config(db)
 
     # Prepare employee data
     employees_for_gen = [
