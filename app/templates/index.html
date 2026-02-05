@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}SendRice - Gửi Bảng Lương Nhân Viên{% endblock %}
+
+{% block content %}
+<div x-data="employeeManager()" x-init="init()">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900">Danh Sách Nhân Viên</h2>
+        <p class="text-gray-600 mt-1">Import file Excel và gửi thông báo lương qua Zalo</p>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card mb-6">
+        <div class="card-header">
+            <h3 class="card-title">
+                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                Import File Excel
+            </h3>
+        </div>
+        <div class="card-body">
+            <form
+                hx-post="/upload"
+                hx-target="#employee-table-container"
+                hx-swap="innerHTML"
+                hx-encoding="multipart/form-data"
+                hx-indicator="#upload-spinner"
+                class="flex flex-wrap items-end gap-4"
+            >
+                <div class="flex-1 min-w-[250px]">
+                    <label class="form-label">File Excel (.xlsx)</label>
+                    <input
+                        type="file"
+                        name="file"
+                        accept=".xlsx,.xls"
+                        required
+                        class="form-input file-input"
+                    >
+                </div>
+                <div class="w-40">
+                    <label class="form-label">Tên Sheet</label>
+                    <input
+                        type="text"
+                        name="sheet_name"
+                        placeholder="Sheet1"
+                        class="form-input"
+                    >
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span id="upload-spinner" class="htmx-indicator">
+                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </span>
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Upload & Import
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Session Info & Actions -->
+    {% if session %}
+    <div class="card mb-6">
+        <div class="card-body py-3">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <span class="font-medium text-gray-900">{{ session.filename }}</span>
+                    </div>
+                    <span class="badge badge-purple">{{ session.sheet_name }}</span>
+                    <span class="text-sm text-gray-500">{{ session.total_rows }} nhân viên</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button
+                        @click="selectAll()"
+                        class="btn btn-outline btn-sm"
+                        :class="{ 'btn-active': allSelected }"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                        </svg>
+                        <span x-text="allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'"></span>
+                    </button>
+                    <button
+                        @click="batchGenerateImages()"
+                        :disabled="selectedCount === 0"
+                        class="btn btn-outline btn-sm"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        Tạo ảnh (<span x-text="selectedCount"></span>)
+                    </button>
+                    <button
+                        @click="batchSend()"
+                        :disabled="selectedCount === 0"
+                        class="btn btn-primary btn-sm"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                        Gửi Zalo (<span x-text="selectedCount"></span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Employee Table -->
+    <div id="employee-table-container">
+        {% include "partials/employee_table.html" %}
+    </div>
+</div>
+
+<!-- Preview Modal Template -->
+<template id="preview-modal-template">
+    <div class="modal-backdrop" @click.self="closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Preview Bảng Lương</h3>
+                <button @click="closeModal()" class="modal-close">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Content loaded via HTMX -->
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function employeeManager() {
+    return {
+        selected: new Set(),
+        allSelected: false,
+        employees: [],
+
+        init() {
+            // Initialize from DOM
+            document.querySelectorAll('[data-employee-id]').forEach(el => {
+                this.employees.push(el.dataset.employeeId);
+            });
+        },
+
+        get selectedCount() {
+            return this.selected.size;
+        },
+
+        toggleSelect(id) {
+            if (this.selected.has(id)) {
+                this.selected.delete(id);
+            } else {
+                this.selected.add(id);
+            }
+            this.allSelected = this.selected.size === this.employees.length;
+        },
+
+        selectAll() {
+            if (this.allSelected) {
+                this.selected.clear();
+                this.allSelected = false;
+            } else {
+                this.employees.forEach(id => this.selected.add(id));
+                this.allSelected = true;
+            }
+        },
+
+        isSelected(id) {
+            return this.selected.has(id);
+        },
+
+        async batchGenerateImages() {
+            if (this.selected.size === 0) return;
+
+            const ids = Array.from(this.selected);
+            showToast('Đang tạo ảnh...', 'info');
+
+            try {
+                const response = await fetch('/api/employees/batch/generate-images', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ employee_ids: ids })
+                });
+                const result = await response.json();
+
+                if (result.success > 0) {
+                    showToast(`Đã tạo ${result.success}/${result.total} ảnh thành công`, 'success');
+                    htmx.trigger('#employee-table-container', 'refresh');
+                } else {
+                    showToast('Không thể tạo ảnh', 'error');
+                }
+            } catch (error) {
+                showToast('Lỗi: ' + error.message, 'error');
+            }
+        },
+
+        async batchSend() {
+            if (this.selected.size === 0) return;
+
+            const ids = Array.from(this.selected);
+            showToast('Đang gửi...', 'info');
+
+            try {
+                const response = await fetch('/api/employees/batch/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'HX-Request': 'true'
+                    },
+                    body: JSON.stringify({ employee_ids: ids })
+                });
+
+                if (response.ok) {
+                    const html = await response.text();
+                    document.getElementById('employee-table-container').innerHTML = html;
+                    showToast('Đã gửi thông báo', 'success');
+                    this.selected.clear();
+                }
+            } catch (error) {
+                showToast('Lỗi: ' + error.message, 'error');
+            }
+        },
+
+        openPreview(employeeId) {
+            htmx.ajax('GET', `/api/employees/${employeeId}/preview`, {
+                target: '#modal-container',
+                swap: 'innerHTML'
+            });
+        },
+
+        closeModal() {
+            document.getElementById('modal-container').innerHTML = '';
+        }
+    }
+}
+</script>
+{% endblock %}
