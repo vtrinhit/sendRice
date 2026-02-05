@@ -80,10 +80,9 @@ class OptimizedSalarySlipService:
         """
         Generate salary slips for multiple employees in one batch.
 
-        This is much faster than generating one by one because:
-        - LibreOffice starts only once
-        - Excel file is opened only once
-        - Only D9 cell is changed between exports
+        Note: Cannot keep workbook open across saves because openpyxl has issues
+        with embedded images (file handles get closed after first save).
+        Instead, we reload for each employee but optimize other aspects.
 
         Args:
             excel_file_path: Path to the Excel file
@@ -111,11 +110,12 @@ class OptimizedSalarySlipService:
 
             # Copy Excel to temp location once
             shutil.copy(excel_file_path, temp_excel)
+            logger.info(f"[BATCH] Processing {len(employee_codes)} employees")
 
             # Process each employee
             for emp_code in employee_codes:
                 try:
-                    result = self._process_single(
+                    result = self._process_single_optimized(
                         temp_excel,
                         emp_code,
                         config,
@@ -138,52 +138,46 @@ class OptimizedSalarySlipService:
                     if callback:
                         callback(emp_code, error_result)
 
-                    logger.error(f"__Failed to process {emp_code}: {e}")
+                    logger.error(f"Failed to process {emp_code}: {e}")
                     logger.error(f"Traceback:\n{traceback.format_exc()}")
+
+            logger.info(f"[BATCH] Completed. Success: {sum(1 for r in results if r.success)}/{len(results)}")
 
         return results
 
-    def _process_single(
+    def _process_single_optimized(
         self,
         excel_path: Path,
         employee_code: str,
         config: Dict[str, Any],
         temp_dir: Path
     ) -> BatchResult:
-        """Process a single employee - update D9, export to PNG."""
+        """
+        Process a single employee - optimized version with less overhead.
+
+        Must reload workbook each time due to openpyxl image handling bug.
+        """
         from openpyxl import load_workbook
         from openpyxl.worksheet.page import PageMargins, PrintPageSetup
         from openpyxl.worksheet.properties import WorksheetProperties, PageSetupProperties
 
-        logger.info(f"[{employee_code}] START processing, excel_path={excel_path}")
+        logger.info(f"[{employee_code}] Processing")
 
-        # Update employee code in Excel
+        # Load workbook (required for each employee due to image bug)
         wb = load_workbook(excel_path)
-        logger.info(f"[{employee_code}] Workbook loaded. Sheets: {wb.sheetnames}")
 
         if self.SALARY_SLIP_SHEET not in wb.sheetnames:
             wb.close()
-            raise ValueError(f"Sheet '{self.SALARY_SLIP_SHEET}' not found. Available: {wb.sheetnames}")
+            raise ValueError(f"Sheet '{self.SALARY_SLIP_SHEET}' not found")
 
         ws = wb[self.SALARY_SLIP_SHEET]
-        logger.info(f"[{employee_code}] Worksheet loaded: {ws.title}")
 
-        if ws is None:
-            wb.close()
-            raise ValueError(f"Worksheet '{self.SALARY_SLIP_SHEET}' returned None!")
-
-        # Fix: Ensure sheet_properties exists with pageSetUpPr
+        # Initialize sheet properties if needed
         if ws.sheet_properties is None:
-            logger.info(f"[{employee_code}] Initializing sheet_properties")
             ws.sheet_properties = WorksheetProperties()
-
         if ws.sheet_properties.pageSetUpPr is None:
-            logger.info(f"[{employee_code}] Initializing pageSetUpPr")
             ws.sheet_properties.pageSetUpPr = PageSetupProperties()
-
-        # Fix: Ensure page_setup has proper parent reference
         if ws.page_setup is None or ws.page_setup._parent is None:
-            logger.info(f"[{employee_code}] Re-initializing page_setup with parent")
             ws.page_setup = PrintPageSetup(worksheet=ws)
 
         # Set employee code
@@ -191,59 +185,61 @@ class OptimizedSalarySlipService:
             ws[self.EMPLOYEE_CODE_CELL] = int(employee_code)
         except ValueError:
             ws[self.EMPLOYEE_CODE_CELL] = employee_code
-        logger.info(f"[{employee_code}] Set employee code in {self.EMPLOYEE_CODE_CELL}")
 
-        # Set print area
-        start_col = config["image_start_col"]
-        end_col = config["image_end_col"]
-        start_row = config["image_start_row"]
-        end_row = config["image_end_row"]
-        print_area = f"{start_col}{start_row}:{end_col}{end_row}"
+        # Set print area and page setup
+        print_area = f"{config['image_start_col']}{config['image_start_row']}:{config['image_end_col']}{config['image_end_row']}"
         ws.print_area = print_area
-        logger.info(f"[{employee_code}] Set print area: {print_area}")
-
-        # Set minimal margins
-        ws.page_margins = PageMargins(
-            left=0.1, right=0.1, top=0.1, bottom=0.1,
-            header=0, footer=0
-        )
-
-        # Configure page setup - now safe because we ensured proper initialization
+        ws.page_margins = PageMargins(left=0.1, right=0.1, top=0.1, bottom=0.1, header=0, footer=0)
         ws.page_setup.orientation = 'portrait'
         ws.page_setup.fitToPage = True
         ws.page_setup.fitToWidth = 1
         ws.page_setup.fitToHeight = 1
         ws.page_setup.horizontalCentered = True
         ws.page_setup.verticalCentered = True
-        logger.info(f"[{employee_code}] Page setup configured")
 
         wb.save(excel_path)
         wb.close()
-        logger.info(f"[{employee_code}] Workbook saved")
 
         # Export to PNG using LibreOffice
         png_path = self._export_to_png(excel_path, temp_dir, employee_code)
-        logger.info(f"[{employee_code}] PNG exported: {png_path}")
 
-        # Read the PNG and convert to base64
+        # Read PNG and convert to base64
         with open(png_path, "rb") as f:
             base64_image = base64.b64encode(f.read()).decode("utf-8")
 
-        # Read salary from recalculated file
-        salary = self._read_salary(excel_path)
-        logger.info(f"[{employee_code}] Salary: {salary}")
+        # Read salary
+        salary = self._read_salary_fast(excel_path)
 
-        # Clean up PNG file
+        # Clean up PNG
         if os.path.exists(png_path):
             os.remove(png_path)
 
-        logger.info(f"[{employee_code}] END - SUCCESS")
+        logger.info(f"[{employee_code}] Done, salary={salary}")
         return BatchResult(
             employee_code=employee_code,
             success=True,
             base64_image=base64_image,
             salary=salary
         )
+
+    def _read_salary_fast(self, excel_path: Path) -> Optional[int]:
+        """Read salary from E24 - simplified version."""
+        try:
+            from openpyxl import load_workbook
+            wb = load_workbook(excel_path, data_only=True)
+            ws = wb[self.SALARY_SLIP_SHEET]
+            salary_value = ws[self.SALARY_CELL].value
+            wb.close()
+
+            if salary_value is not None:
+                try:
+                    return int(float(salary_value))
+                except (ValueError, TypeError):
+                    return None
+            return None
+        except Exception as e:
+            logger.error(f"[_read_salary_fast] Error: {e}")
+            return None
 
     def _export_to_png(
         self,
