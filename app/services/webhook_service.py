@@ -32,6 +32,7 @@ class WebhookService:
         name: str,
         salary: int,
         image_base64: str,
+        content: str = "",
     ) -> WebhookResponse:
         """
         Send salary notification to a single employee.
@@ -41,6 +42,7 @@ class WebhookService:
             name: Employee name
             salary: Salary amount
             image_base64: Base64 encoded salary image
+            content: Message content/caption for the notification
 
         Returns:
             WebhookResponse with status and message
@@ -56,7 +58,8 @@ class WebhookService:
             "sdt": phone,
             "ten": name,
             "luong": salary,
-            "hinhanh": image_base64  # Base64 image data
+            "hinhanh": image_base64,  # Base64 image data
+            "content": content
         }
 
         last_error = None
@@ -103,6 +106,7 @@ class WebhookService:
     async def send_batch(
         self,
         employees: List[Dict[str, Any]],
+        content: str = "",
         concurrency: int = 5
     ) -> List[SendResponse]:
         """
@@ -110,6 +114,7 @@ class WebhookService:
 
         Args:
             employees: List of employee data dicts with phone, name, salary, image_url
+            content: Message content/caption for all notifications
             concurrency: Maximum concurrent requests
 
         Returns:
@@ -141,7 +146,8 @@ class WebhookService:
                     phone=employee["phone"],
                     name=employee["name"],
                     salary=employee.get("salary", 0),
-                    image_base64=employee["image_base64"]
+                    image_base64=employee["image_base64"],
+                    content=content
                 )
 
                 return SendResponse(

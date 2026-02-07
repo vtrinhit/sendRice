@@ -18,7 +18,8 @@ from sse_starlette.sse import EventSourceResponse
 
 from app.database import get_db
 from app.config import settings
-from app.models import ImportSession, Employee, AppSetting
+from app.models import ImportSession, Employee, AppSetting, User
+from app.dependencies.auth import get_current_active_user
 from app.services.excel_parser import parse_excel_file, ExcelParserService
 from app.services.background_image_service import background_image_service
 from app.helpers import get_image_config
@@ -53,7 +54,8 @@ async def get_excel_config(db: AsyncSession) -> dict:
 @router.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Render the main page."""
     # Get active session if any
@@ -91,7 +93,8 @@ async def upload_excel(
     request: Request,
     file: UploadFile = File(...),
     sheet_name: Optional[str] = Form(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Upload and process an Excel file."""
     # Validate file type
@@ -216,7 +219,10 @@ async def upload_excel(
 
 
 @router.get("/sheets")
-async def get_sheet_names(file_path: str):
+async def get_sheet_names(
+    file_path: str,
+    current_user: User = Depends(get_current_active_user)
+):
     """Get available sheet names from an Excel file."""
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
@@ -232,7 +238,8 @@ async def get_sheet_names(file_path: str):
 @router.delete("/session/{session_id}")
 async def delete_session(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Delete an import session and all its employees."""
     result = await db.execute(
@@ -257,7 +264,10 @@ async def delete_session(
 
 
 @router.get("/session/{session_id}/progress")
-async def get_session_progress(session_id: str):
+async def get_session_progress(
+    session_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
     """Get current image generation progress for a session."""
     progress = background_image_service.get_progress(session_id)
     if not progress:
@@ -266,7 +276,11 @@ async def get_session_progress(session_id: str):
 
 
 @router.get("/session/{session_id}/sse")
-async def session_sse(session_id: str, request: Request):
+async def session_sse(
+    session_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+):
     """SSE endpoint for real-time image generation updates."""
 
     async def event_generator():
@@ -302,7 +316,8 @@ async def session_sse(session_id: str, request: Request):
 @router.post("/session/{session_id}/generate-all")
 async def generate_all_images(
     session_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Manually trigger image generation for all employees in a session."""
     result = await db.execute(

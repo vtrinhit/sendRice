@@ -21,7 +21,7 @@ class SendResponse(BaseModel):
 
 class BatchSendRequest(BaseModel):
     """Schema for batch sending notifications."""
-    employee_ids: List[UUID] = Field(..., min_length=1)
+    employee_ids: List[str] = Field(..., min_length=1)
 
 
 class BatchSendResponse(BaseModel):

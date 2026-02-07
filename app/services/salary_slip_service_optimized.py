@@ -94,6 +94,7 @@ class OptimizedSalarySlipService:
             List of BatchResult objects
         """
         config = {
+            "salary_slip_sheet": self.SALARY_SLIP_SHEET,
             "image_start_col": "B",
             "image_end_col": "H",
             "image_start_row": 4,
@@ -163,14 +164,17 @@ class OptimizedSalarySlipService:
 
         logger.info(f"[{employee_code}] Processing")
 
+        # Get sheet name from config
+        sheet_name = config.get("salary_slip_sheet", self.SALARY_SLIP_SHEET)
+
         # Load workbook (required for each employee due to image bug)
         wb = load_workbook(excel_path)
 
-        if self.SALARY_SLIP_SHEET not in wb.sheetnames:
+        if sheet_name not in wb.sheetnames:
             wb.close()
-            raise ValueError(f"Sheet '{self.SALARY_SLIP_SHEET}' not found")
+            raise ValueError(f"Sheet '{sheet_name}' not found")
 
-        ws = wb[self.SALARY_SLIP_SHEET]
+        ws = wb[sheet_name]
 
         # Initialize sheet properties if needed
         if ws.sheet_properties is None:
@@ -208,7 +212,7 @@ class OptimizedSalarySlipService:
             base64_image = base64.b64encode(f.read()).decode("utf-8")
 
         # Read salary
-        salary = self._read_salary_fast(excel_path)
+        salary = self._read_salary_fast(excel_path, sheet_name)
 
         # Clean up PNG
         if os.path.exists(png_path):
@@ -222,12 +226,14 @@ class OptimizedSalarySlipService:
             salary=salary
         )
 
-    def _read_salary_fast(self, excel_path: Path) -> Optional[int]:
+    def _read_salary_fast(self, excel_path: Path, sheet_name: str = None) -> Optional[int]:
         """Read salary from E24 - simplified version."""
+        if sheet_name is None:
+            sheet_name = self.SALARY_SLIP_SHEET
         try:
             from openpyxl import load_workbook
             wb = load_workbook(excel_path, data_only=True)
-            ws = wb[self.SALARY_SLIP_SHEET]
+            ws = wb[sheet_name]
             salary_value = ws[self.SALARY_CELL].value
             wb.close()
 
@@ -314,8 +320,10 @@ class OptimizedSalarySlipService:
 
         return png_path
 
-    def _read_salary(self, excel_path: Path) -> Optional[int]:
+    def _read_salary(self, excel_path: Path, sheet_name: str = None) -> Optional[int]:
         """Read calculated salary value from E24."""
+        if sheet_name is None:
+            sheet_name = self.SALARY_SLIP_SHEET
         try:
             from openpyxl import load_workbook
             from openpyxl.worksheet.properties import WorksheetProperties
@@ -324,8 +332,8 @@ class OptimizedSalarySlipService:
             wb = load_workbook(excel_path, data_only=True)
             logger.info(f"[_read_salary] Workbook loaded. Sheets: {wb.sheetnames}")
 
-            logger.info(f"[_read_salary] Getting worksheet '{self.SALARY_SLIP_SHEET}'...")
-            ws = wb[self.SALARY_SLIP_SHEET]
+            logger.info(f"[_read_salary] Getting worksheet '{sheet_name}'...")
+            ws = wb[sheet_name]
             logger.info(f"[_read_salary] Worksheet type: {type(ws)}, is None: {ws is None}")
 
             if ws is None:

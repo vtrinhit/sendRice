@@ -32,8 +32,40 @@ async def get_image_config(db: AsyncSession) -> Optional[Dict[str, Any]]:
         return None
 
     return {
+        "salary_slip_sheet": setting.value.get("salary_slip_sheet", "Phiếu lương"),
         "image_start_col": setting.value.get("image_start_col", "B"),
         "image_end_col": setting.value.get("image_end_col", "H"),
         "image_start_row": setting.value.get("image_start_row", 4),
         "image_end_row": setting.value.get("image_end_row", 29),
+    }
+
+
+async def get_webhook_config(db: AsyncSession) -> Dict[str, Any]:
+    """
+    Retrieve webhook configuration from the database.
+
+    Args:
+        db: Async database session
+
+    Returns:
+        Dictionary with webhook_url, timeout, retry_count, message_content
+    """
+    result = await db.execute(
+        select(AppSetting).where(AppSetting.key == "webhook_config")
+    )
+    setting = result.scalar_one_or_none()
+
+    if not setting or not setting.value:
+        return {
+            "webhook_url": "",
+            "timeout": 30,
+            "retry_count": 3,
+            "message_content": ""
+        }
+
+    return {
+        "webhook_url": setting.value.get("webhook_url", ""),
+        "timeout": setting.value.get("timeout", 30),
+        "retry_count": setting.value.get("retry_count", 3),
+        "message_content": setting.value.get("message_content", ""),
     }

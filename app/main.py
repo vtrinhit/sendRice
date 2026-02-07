@@ -13,6 +13,7 @@ from app.database import engine, Base
 from app.routers import main as main_router
 from app.routers import employees as employees_router
 from app.routers import settings as settings_router
+from app.routers import auth as auth_router
 
 
 def configure_logging():
@@ -55,6 +56,7 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Include routers
+app.include_router(auth_router.router, tags=["auth"])
 app.include_router(main_router.router)
 app.include_router(employees_router.router, prefix="/api/employees", tags=["employees"])
 app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])

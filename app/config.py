@@ -23,6 +23,14 @@ class Settings(BaseSettings):
         alias="SECRET_KEY"
     )
 
+    # JWT Authentication
+    jwt_secret_key: str = Field(
+        default="jwt-secret-key-change-in-production",
+        alias="JWT_SECRET_KEY"
+    )
+    jwt_algorithm: str = "HS256"
+    jwt_expire_hours: int = Field(default=24, alias="JWT_EXPIRE_HOURS")
+
     # n8n Webhook
     n8n_webhook_url: Optional[str] = Field(
         default=None,

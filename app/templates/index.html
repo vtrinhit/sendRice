@@ -1,148 +1,333 @@
 {% extends "base.html" %}
 
 {% block title %}SendRice - Gửi Bảng Lương Nhân Viên{% endblock %}
+{% block breadcrumb %}Trang chính{% endblock %}
 
 {% block content %}
 <div x-data="employeeManager()" x-init="init()">
-    <!-- Page Header -->
+    <!-- Page Header with Stats -->
     <div class="mb-8">
-        <h2 class="text-2xl font-bold text-gray-900">Danh Sách Nhân Viên</h2>
-        <p class="text-gray-600 mt-1">Import file Excel và gửi thông báo lương qua Zalo</p>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Gửi Bảng Lương</h1>
+                <p class="text-slate-600 dark:text-slate-400 mt-1">Import file Excel và gửi thông báo lương qua Zalo</p>
+            </div>
+            {% if session %}
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-800">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    {{ session.filename }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Stats Cards -->
+        {% if session %}
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white">{{ session.total_rows }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Nhân viên</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="stat-images">{{ stats.images_generated if stats else 0 }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Ảnh đã tạo</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="stat-sent">{{ stats.sent_count if stats else 0 }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Đã gửi</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-2xl font-bold text-slate-900 dark:text-white" id="stat-pending">{{ stats.pending_count if stats else 0 }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Chờ gửi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Upload Section -->
-    <div class="card mb-6">
-        <div class="card-header">
-            <h3 class="card-title">
-                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden" x-data="uploadManager()">
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                 </svg>
                 Import File Excel
             </h3>
         </div>
-        <div class="card-body">
+        <div class="p-6 relative">
+            <!-- Upload Form -->
             <form
+                id="upload-form"
                 hx-post="/upload"
                 hx-target="#employee-table-container"
                 hx-swap="innerHTML"
                 hx-encoding="multipart/form-data"
-                hx-indicator="#upload-spinner"
-                class="flex flex-wrap items-end gap-4"
+                @htmx:before-request="isUploading = true; fileName = $refs.fileInput.files[0]?.name || 'file'"
+                @htmx:after-request="isUploading = false"
+                class="flex flex-col sm:flex-row items-stretch sm:items-end gap-4"
+                :class="{ 'opacity-50 pointer-events-none': isUploading }"
             >
-                <div class="flex-1 min-w-[250px]">
-                    <label class="form-label">File Excel (.xlsx)</label>
-                    <input
-                        type="file"
-                        name="file"
-                        accept=".xlsx,.xls"
-                        required
-                        class="form-input file-input"
-                    >
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">File Excel (.xlsx)</label>
+                    <div class="relative">
+                        <input
+                            type="file"
+                            name="file"
+                            accept=".xlsx,.xls"
+                            required
+                            x-ref="fileInput"
+                            @change="fileName = $event.target.files[0]?.name || ''"
+                            class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 dark:file:bg-primary-900/30 file:text-primary-600 dark:file:text-primary-400 hover:file:bg-primary-100 dark:hover:file:bg-primary-900/50 cursor-pointer transition-colors"
+                        >
+                    </div>
                 </div>
-                <div class="w-40">
-                    <label class="form-label">Tên Sheet</label>
-                    <input
-                        type="text"
-                        name="sheet_name"
-                        placeholder="Phiếu lương"
-                        class="form-input"
-                    >
-                </div>
-                <button type="submit" class="btn btn-primary">
-                    <span id="upload-spinner" class="htmx-indicator">
-                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                    </span>
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition-all shadow-sm hover:shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" :disabled="isUploading">
+                    <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
                     </svg>
-                    Upload & Import
+                    Upload
                 </button>
             </form>
+
+            <!-- Loading Overlay -->
+            <div
+                x-show="isUploading"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0"
+                x-transition:enter-end="opacity-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100"
+                x-transition:leave-end="opacity-0"
+                class="absolute inset-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center z-10"
+                x-cloak
+            >
+                <div class="text-center">
+                    <!-- Animated Upload Icon -->
+                    <div class="relative w-16 h-16 mx-auto mb-4">
+                        <!-- Background circle -->
+                        <div class="absolute inset-0 bg-primary-100 dark:bg-primary-900/30 rounded-full"></div>
+                        <!-- Spinning border -->
+                        <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-primary-600 dark:border-t-primary-400 animate-spin"></div>
+                        <!-- Center icon -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <svg class="w-7 h-7 text-primary-600 dark:text-primary-400 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Status Text -->
+                    <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Đang xử lý file...</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto" x-text="fileName ? 'File: ' + fileName : 'Vui lòng chờ trong giây lát'"></p>
+
+                    <!-- Progress dots -->
+                    <div class="flex items-center justify-center gap-1 mt-3">
+                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
+                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
+                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Session Info & Actions -->
+    <!-- Actions Bar -->
     {% if session %}
-    <div class="card mb-6">
-        <div class="card-body py-3">
-            <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden">
+        <div class="p-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <span class="font-medium text-gray-900">{{ session.filename }}</span>
-                    </div>
-                    <span class="badge badge-purple">{{ session.sheet_name }}</span>
-                    <span class="text-sm text-gray-500">{{ session.total_rows }} nhân viên</span>
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                        Sheet: {{ session.sheet_name }}
+                    </span>
+                    <span class="text-sm text-slate-500 dark:text-slate-400" x-show="selectedCount > 0">
+                        Đã chọn: <span class="font-semibold text-slate-700 dark:text-slate-200" x-text="selectedCount"></span>
+                    </span>
                 </div>
                 <div class="flex items-center gap-2">
                     <button
-                        @click="selectAll()"
-                        class="btn btn-outline btn-sm"
-                        :class="{ 'btn-active': allSelected }"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                        </svg>
-                        <span x-text="allSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'"></span>
-                    </button>
-                    <button
-                        @click="regenerateAll()"
-                        class="btn btn-outline btn-sm"
-                        :disabled="isGenerating"
+                        @click="regenerateSelected()"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        :disabled="selectedCount === 0 || isGenerating"
                     >
                         <svg class="w-4 h-4" :class="{ 'animate-spin': isGenerating }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                         </svg>
-                        <span x-text="isGenerating ? 'Đang tạo...' : 'Tạo lại tất cả ảnh'"></span>
+                        <span x-text="isGenerating ? 'Đang tạo...' : 'Tạo ảnh'"></span>
                     </button>
                     <button
                         @click="batchSend()"
-                        :disabled="selectedCount === 0"
-                        class="btn btn-primary btn-sm"
+                        :disabled="selectedCount === 0 || isSending"
+                        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow cursor-pointer"
                     >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                        <svg class="w-4 h-4" :class="{ 'animate-spin': isSending }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path x-show="!isSending" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                            <path x-show="isSending" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                         </svg>
-                        Gửi Zalo (<span x-text="selectedCount"></span>)
+                        <span x-text="isSending ? 'Đang gửi...' : 'Gửi Zalo'"></span>
                     </button>
                 </div>
             </div>
 
-            <!-- Progress Bar -->
-            <div x-show="isGenerating || progress.total > 0" x-cloak class="mt-4">
-                <div class="flex items-center justify-between text-sm text-gray-600 mb-2">
-                    <span>Tiến độ tạo ảnh</span>
-                    <span x-text="`${progress.completed + progress.failed}/${progress.total}`"></span>
+            <!-- Progress Section -->
+            <div x-show="isGenerating || progress.total > 0" x-cloak
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+
+                <!-- Progress Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
+                                <svg x-show="isGenerating" class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <svg x-show="!isGenerating && progress.failed === 0" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <svg x-show="!isGenerating && progress.failed > 0" class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <!-- Pulse ring when processing -->
+                            <div x-show="isGenerating" class="absolute inset-0 rounded-xl bg-primary-400/30 animate-ping"></div>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-slate-900 dark:text-white">
+                                <span x-show="isGenerating">Đang tạo ảnh...</span>
+                                <span x-show="!isGenerating && progress.failed === 0">Hoàn thành</span>
+                                <span x-show="!isGenerating && progress.failed > 0">Hoàn thành với lỗi</span>
+                            </h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400" x-text="`${progress.completed + progress.failed} / ${progress.total} ảnh`"></p>
+                        </div>
+                    </div>
+
+                    <!-- Percentage -->
+                    <div class="text-right">
+                        <span class="text-2xl font-bold" :class="progress.failed > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-primary-600 dark:text-primary-400'"
+                              x-text="`${progress.total > 0 ? Math.round((progress.completed + progress.failed) / progress.total * 100) : 0}%`"></span>
+                    </div>
                 </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div
-                        class="h-2.5 rounded-full transition-all duration-300"
-                        :class="progress.failed > 0 ? 'bg-yellow-500' : 'bg-green-500'"
-                        :style="`width: ${progress.total > 0 ? ((progress.completed + progress.failed) / progress.total * 100) : 0}%`"
-                    ></div>
+
+                <!-- Progress Bar -->
+                <div class="relative h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <!-- Success portion -->
+                    <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
+                         :style="`width: ${progress.total > 0 ? (progress.completed / progress.total * 100) : 0}%`"></div>
+                    <!-- Failed portion (stacked after success) -->
+                    <div class="absolute inset-y-0 bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all duration-500 ease-out"
+                         :style="`left: ${progress.total > 0 ? (progress.completed / progress.total * 100) : 0}%; width: ${progress.total > 0 ? (progress.failed / progress.total * 100) : 0}%`"></div>
+                    <!-- Processing indicator -->
+                    <div x-show="isGenerating" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
                 </div>
-                <div class="flex gap-4 mt-2 text-xs">
-                    <span class="text-green-600" x-show="progress.completed > 0">
-                        <span class="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span>
-                        <span x-text="progress.completed"></span> thành công
-                    </span>
-                    <span class="text-yellow-600" x-show="progress.processing > 0">
-                        <span class="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1 animate-pulse"></span>
-                        <span x-text="progress.processing"></span> đang xử lý
-                    </span>
-                    <span class="text-red-600" x-show="progress.failed > 0">
-                        <span class="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span>
-                        <span x-text="progress.failed"></span> thất bại
-                    </span>
-                    <span class="text-gray-500" x-show="progress.pending > 0">
-                        <span class="inline-block w-2 h-2 bg-gray-400 rounded-full mr-1"></span>
-                        <span x-text="progress.pending"></span> chờ xử lý
-                    </span>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+                    <!-- Completed -->
+                    <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-800/30">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-lg font-bold text-emerald-700 dark:text-emerald-300" x-text="progress.completed"></p>
+                                <p class="text-xs text-emerald-600 dark:text-emerald-400">Thành công</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Processing -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-100 dark:border-amber-800/30">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" :class="{ 'animate-spin': progress.processing > 0 }" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-lg font-bold text-amber-700 dark:text-amber-300" x-text="progress.processing"></p>
+                                <p class="text-xs text-amber-600 dark:text-amber-400">Đang xử lý</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Failed -->
+                    <div class="bg-rose-50 dark:bg-rose-900/20 rounded-xl p-3 border border-rose-100 dark:border-rose-800/30">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-rose-100 dark:bg-rose-900/50 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-lg font-bold text-rose-700 dark:text-rose-300" x-text="progress.failed"></p>
+                                <p class="text-xs text-rose-600 dark:text-rose-400">Thất bại</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pending -->
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-200 dark:border-slate-600">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-lg font-bold text-slate-700 dark:text-slate-300" x-text="progress.pending"></p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">Chờ xử lý</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -157,17 +342,17 @@
 
 <!-- Preview Modal Template -->
 <template id="preview-modal-template">
-    <div class="modal-backdrop" @click.self="closeModal()">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 class="modal-title">Preview Bảng Lương</h3>
-                <button @click="closeModal()" class="modal-close">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" @click.self="closeModal()">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Preview Bảng Lương</h3>
+                <button @click="closeModal()" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
-            <div class="modal-body">
+            <div class="p-6 overflow-auto max-h-[calc(90vh-80px)]">
                 <!-- Content loaded via HTMX -->
             </div>
         </div>
@@ -177,6 +362,14 @@
 
 {% block scripts %}
 <script>
+// Upload Manager - handles file upload loading state
+function uploadManager() {
+    return {
+        isUploading: false,
+        fileName: ''
+    }
+}
+
 function employeeManager() {
     return {
         selected: new Set(),
@@ -184,6 +377,7 @@ function employeeManager() {
         employees: [],
         sessionId: '{{ session.id if session else "" }}',
         isGenerating: false,
+        isSending: false,
         eventSource: null,
         progress: {
             total: 0,
@@ -273,13 +467,13 @@ function employeeManager() {
             const row = document.querySelector(`[data-employee-id="${employeeId}"]`);
             if (!row) return;
 
-            // Find the image status cell (6th td)
-            const statusCell = row.querySelectorAll('td')[5];
+            // Find the image status cell (5th td - index 4)
+            const statusCell = row.querySelectorAll('td')[4];
             if (!statusCell) return;
 
             if (status === 'processing') {
                 statusCell.innerHTML = `
-                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-100 text-yellow-600" title="Đang tạo ảnh...">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" title="Đang tạo ảnh...">
                         <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -290,7 +484,7 @@ function employeeManager() {
                 statusCell.innerHTML = `
                     <button
                         onclick="Alpine.$data(this.closest('[x-data]')).openPreview('${employeeId}')"
-                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                        class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
                         title="Xem ảnh"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -300,7 +494,7 @@ function employeeManager() {
                 `;
             } else if (status === 'failed') {
                 statusCell.innerHTML = `
-                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600" title="Lỗi tạo ảnh">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" title="Lỗi tạo ảnh">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -336,15 +530,20 @@ function employeeManager() {
             return this.selected.has(id);
         },
 
-        async regenerateAll() {
-            if (!this.sessionId || this.isGenerating) return;
+        async regenerateSelected() {
+            if (!this.sessionId || this.isGenerating || this.selected.size === 0) return;
 
             this.isGenerating = true;
-            showToast('Bắt đầu tạo ảnh cho tất cả nhân viên...', 'info');
+            const ids = Array.from(this.selected);
+            showToast(`Bắt đầu tạo ảnh cho ${ids.length} nhân viên...`, 'info');
 
             try {
-                const response = await fetch(`/session/${this.sessionId}/generate-all`, {
-                    method: 'POST'
+                const response = await fetch('/api/employees/batch/generate-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ employee_ids: ids })
                 });
 
                 if (response.ok) {
@@ -369,7 +568,8 @@ function employeeManager() {
             if (this.selected.size === 0) return;
 
             const ids = Array.from(this.selected);
-            showToast('Đang gửi...', 'info');
+            this.isSending = true;
+            showToast(`Đang gửi ${ids.length} thông báo...`, 'info');
 
             try {
                 const response = await fetch('/api/employees/batch/send', {
@@ -384,11 +584,22 @@ function employeeManager() {
                 if (response.ok) {
                     const html = await response.text();
                     document.getElementById('employee-table-container').innerHTML = html;
-                    showToast('Đã gửi thông báo', 'success');
+                    showToast('Đã gửi thông báo thành công', 'success');
                     this.selected.clear();
+                    this.allSelected = false;
+                    // Re-init employees list
+                    this.employees = [];
+                    document.querySelectorAll('[data-employee-id]').forEach(el => {
+                        this.employees.push(el.dataset.employeeId);
+                    });
+                } else {
+                    const error = await response.json();
+                    showToast('Lỗi: ' + (error.detail || 'Không thể gửi'), 'error');
                 }
             } catch (error) {
                 showToast('Lỗi: ' + error.message, 'error');
+            } finally {
+                this.isSending = false;
             }
         },
 

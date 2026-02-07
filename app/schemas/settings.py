@@ -37,6 +37,7 @@ class ExcelConfigSchema(BaseModel):
     phone_column: str = Field(default="C", description="Cột số điện thoại")
     salary_column: str = Field(default="D", description="Cột lương")
     # Image generation config
+    salary_slip_sheet: str = Field(default="Phiếu lương", description="Sheet phiếu lương để tạo ảnh")
     image_start_row: int = Field(default=4, description="Hàng bắt đầu cho ảnh lương", ge=1)
     image_end_row: int = Field(default=29, description="Hàng kết thúc cho ảnh lương", ge=1)
     image_start_col: str = Field(default="B", description="Cột bắt đầu cho ảnh lương")
@@ -48,6 +49,7 @@ class WebhookConfigSchema(BaseModel):
     webhook_url: str = Field(..., description="URL webhook n8n")
     timeout: int = Field(default=30, description="Timeout (giây)", ge=5, le=120)
     retry_count: int = Field(default=3, description="Số lần thử lại", ge=0, le=5)
+    message_content: str = Field(default="", description="Nội dung tin nhắn kèm ảnh lương")
 
 
 class AllSettingsResponse(BaseModel):

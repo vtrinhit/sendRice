@@ -20,6 +20,8 @@ services:
     image: postgres:16-alpine
     container_name: sendrice-db
     restart: unless-stopped
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_USER=sendrice
       - POSTGRES_PASSWORD=${DB_PASSWORD}

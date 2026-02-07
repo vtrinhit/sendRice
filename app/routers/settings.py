@@ -12,7 +12,8 @@ from sqlalchemy import select
 import logging
 
 from app.database import get_db
-from app.models import AppSetting
+from app.models import AppSetting, User
+from app.dependencies.auth import get_current_active_user
 from app.schemas.settings import (
     ExcelConfigSchema,
     WebhookConfigSchema,
@@ -56,7 +57,8 @@ async def set_setting(db: AsyncSession, key: str, value: dict):
 @router.get("/page", response_class=HTMLResponse)
 async def settings_page(
     request: Request,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Render the settings page."""
     # Get all settings
@@ -73,7 +75,8 @@ async def settings_page(
     webhook_config = await get_setting(db, "webhook_config") or {
         "webhook_url": settings.n8n_webhook_url or "",
         "timeout": 30,
-        "retry_count": 3
+        "retry_count": 3,
+        "message_content": ""
     }
 
     return templates.TemplateResponse(
@@ -89,7 +92,8 @@ async def settings_page(
 
 @router.get("/")
 async def get_all_settings(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get all application settings."""
     excel_config = await get_setting(db, "excel_config") or {}
@@ -114,6 +118,7 @@ async def get_all_settings(
 async def update_excel_config(
     request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
     sheet_name: str = Form("Sheet1"),
     header_row: int = Form(1),
     data_start_row: int = Form(2),
@@ -121,6 +126,7 @@ async def update_excel_config(
     name_column: str = Form("B"),
     phone_column: str = Form("C"),
     salary_column: str = Form("D"),
+    salary_slip_sheet: str = Form("Phiếu lương"),
     image_start_col: str = Form("B"),
     image_end_col: str = Form("H"),
     image_start_row: int = Form(4),
@@ -135,6 +141,7 @@ async def update_excel_config(
         name_column=name_column,
         phone_column=phone_column,
         salary_column=salary_column,
+        salary_slip_sheet=salary_slip_sheet,
         image_start_col=image_start_col,
         image_end_col=image_end_col,
         image_start_row=image_start_row,
@@ -159,9 +166,11 @@ async def update_excel_config(
 async def update_webhook_config(
     request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
     webhook_url: str = Form(""),
     timeout: int = Form(30),
     retry_count: int = Form(3),
+    message_content: str = Form(""),
 ):
     """Update webhook configuration."""
     logger.info(f"Updating webhook config: url={webhook_url}, timeout={timeout}, retry={retry_count}")
@@ -169,6 +178,7 @@ async def update_webhook_config(
         webhook_url=webhook_url,
         timeout=timeout,
         retry_count=retry_count,
+        message_content=message_content,
     )
     await set_setting(db, "webhook_config", config.model_dump())
     logger.info("Webhook config saved to database")
@@ -193,7 +203,8 @@ async def update_webhook_config(
 
 @router.post("/webhook/test")
 async def test_webhook(
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Test webhook connectivity."""
     result = await webhook_service.test_webhook()

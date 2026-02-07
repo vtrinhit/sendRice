@@ -1,32 +1,37 @@
 <tr
     data-employee-id="{{ employee.id }}"
-    class="hover:bg-gray-50 transition-colors"
-    :class="{ 'bg-purple-50': isSelected('{{ employee.id }}') }"
+    class="group hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
+    :class="{ 'bg-primary-50/50 dark:bg-primary-900/10': isSelected('{{ employee.id }}') }"
 >
-    <td>
+    <td class="px-4 py-3.5">
         <input
             type="checkbox"
-            class="form-checkbox"
+            class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-primary-600 focus:ring-primary-500 dark:bg-slate-700 cursor-pointer"
             @change="toggleSelect('{{ employee.id }}')"
             :checked="isSelected('{{ employee.id }}')"
         >
     </td>
-    <td class="text-gray-500 font-mono text-sm">{{ employee.row_number }}</td>
-    <td class="font-mono text-sm">{{ employee.employee_code or '-' }}</td>
-    <td class="font-medium text-gray-900">{{ employee.name }}</td>
-    <td>
+    <td class="w-28 px-4 py-3.5">
+        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-mono font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+            {{ employee.employee_code or '-' }}
+        </span>
+    </td>
+    <td class="px-4 py-3.5">
+        <span class="font-medium text-slate-900 dark:text-white">{{ employee.name }}</span>
+    </td>
+    <td class="px-4 py-3.5">
         {% if employee.phone %}
-        <span class="font-mono text-sm">{{ employee.phone }}</span>
+        <span class="font-mono text-sm text-slate-600 dark:text-slate-400">{{ employee.phone }}</span>
         {% else %}
-        <span class="text-gray-400">-</span>
+        <span class="text-slate-400 dark:text-slate-500 text-sm">Chưa có</span>
         {% endif %}
     </td>
-    <td class="text-center">
+    <td class="px-4 py-3.5 text-center">
         {% set img_status = employee.image_status or 'pending' %}
         {% if employee.salary_image_url %}
         <button
             @click="openPreview('{{ employee.id }}')"
-            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+            class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
             title="Xem ảnh"
         >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,48 +39,61 @@
             </svg>
         </button>
         {% elif img_status == 'processing' %}
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-yellow-100 text-yellow-600" title="Đang tạo ảnh...">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" title="Đang tạo ảnh...">
             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
         </span>
         {% elif img_status == 'failed' %}
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600" title="{{ employee.image_error or 'Lỗi tạo ảnh' }}">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" title="{{ employee.image_error or 'Lỗi tạo ảnh' }}">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
         </span>
         {% else %}
-        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-400" title="Đang chờ...">
+        <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500" title="Chờ tạo ảnh">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
         </span>
         {% endif %}
     </td>
-    <td class="text-center">
+    <td class="px-4 py-3.5 text-center">
         {% set status = employee.latest_send_status %}
         {% if status == 'success' %}
-        <span class="badge badge-green">Đã gửi</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+            Đã gửi
+        </span>
         {% elif status == 'failed' %}
-        <span class="badge badge-red">Thất bại</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300">
+            <span class="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+            Thất bại
+        </span>
         {% elif status == 'sending' %}
-        <span class="badge badge-yellow">Đang gửi</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+            <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+            Đang gửi
+        </span>
         {% elif status == 'pending' %}
-        <span class="badge badge-gray">Chờ gửi</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+            <span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span>
+            Chờ gửi
+        </span>
         {% else %}
-        <span class="badge badge-gray">Chưa gửi</span>
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+            Chưa gửi
+        </span>
         {% endif %}
     </td>
-    <td>
-        <div class="flex items-center justify-center gap-1">
-            <!-- Generate Image (only show if not completed) -->
+    <td class="px-4 py-3.5">
+        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             {% if not employee.salary_image_url %}
             <button
                 hx-post="/api/employees/{{ employee.id }}/generate-image"
                 hx-swap="none"
-                class="action-btn"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 title="Tạo ảnh lương"
                 {% if img_status == 'processing' %}disabled{% endif %}
             >
@@ -85,25 +103,11 @@
             </button>
             {% endif %}
 
-            <!-- Preview -->
-            <button
-                @click="openPreview('{{ employee.id }}')"
-                class="action-btn"
-                title="Xem trước"
-                {% if not employee.salary_image_url %}disabled{% endif %}
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-            </button>
-
-            <!-- Send -->
             <button
                 hx-post="/api/employees/{{ employee.id }}/send"
                 hx-target="closest tr"
                 hx-swap="outerHTML"
-                class="action-btn action-btn-primary"
+                class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 title="Gửi Zalo"
                 {% if not employee.phone or not employee.salary_image_url %}disabled{% endif %}
             >

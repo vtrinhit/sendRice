@@ -1,95 +1,105 @@
 {% extends "base.html" %}
 
 {% block title %}Cài Đặt - SendRice{% endblock %}
+{% block breadcrumb %}Cài đặt{% endblock %}
 
 {% block content %}
 <div x-data="settingsManager()">
     <!-- Page Header -->
     <div class="mb-8">
-        <h2 class="text-2xl font-bold text-gray-900">Cài Đặt</h2>
-        <p class="text-gray-600 mt-1">Cấu hình import Excel và Webhook</p>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Cài Đặt</h1>
+        <p class="text-slate-600 dark:text-slate-400 mt-1">Cấu hình import Excel và Webhook</p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <!-- Excel Configuration -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                    <div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
                     Cấu Hình Import Excel
                 </h3>
             </div>
-            <div class="card-body">
+            <div class="p-6">
                 <form
                     hx-post="/api/settings/excel"
                     hx-target="#toast-container"
                     hx-swap="beforeend"
-                    class="space-y-4"
+                    class="space-y-5"
                 >
+                    <!-- Sheet Config -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sheet Danh Sách NV</label>
+                        <input type="text" name="sheet_name" value="{{ excel_config.sheet_name }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Tên Sheet</label>
-                            <input type="text" name="sheet_name" value="{{ excel_config.sheet_name }}" class="form-input">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Hàng tiêu đề</label>
+                            <input type="number" name="header_row" value="{{ excel_config.header_row }}" min="1" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                         </div>
                         <div>
-                            <label class="form-label">Hàng tiêu đề</label>
-                            <input type="number" name="header_row" value="{{ excel_config.header_row }}" min="1" class="form-input">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Hàng bắt đầu dữ liệu</label>
+                            <input type="number" name="data_start_row" value="{{ excel_config.data_start_row }}" min="1" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                         </div>
                     </div>
 
-                    <div>
-                        <label class="form-label">Hàng bắt đầu dữ liệu</label>
-                        <input type="number" name="data_start_row" value="{{ excel_config.data_start_row }}" min="1" class="form-input">
-                    </div>
-
-                    <div class="border-t pt-4">
-                        <h4 class="text-sm font-medium text-gray-700 mb-3">Mapping Cột</h4>
+                    <!-- Column Mapping -->
+                    <div class="pt-5 border-t border-slate-200 dark:border-slate-700">
+                        <h4 class="text-sm font-semibold text-slate-900 dark:text-white mb-4">Mapping Cột</h4>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label">Cột Mã NV</label>
-                                <input type="text" name="code_column" value="{{ excel_config.code_column }}" class="form-input" placeholder="A">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột Mã NV</label>
+                                <input type="text" name="code_column" value="{{ excel_config.code_column }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="A">
                             </div>
                             <div>
-                                <label class="form-label">Cột Tên</label>
-                                <input type="text" name="name_column" value="{{ excel_config.name_column }}" class="form-input" placeholder="B">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột Tên</label>
+                                <input type="text" name="name_column" value="{{ excel_config.name_column }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="B">
                             </div>
                             <div>
-                                <label class="form-label">Cột SĐT</label>
-                                <input type="text" name="phone_column" value="{{ excel_config.phone_column }}" class="form-input" placeholder="C">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột SĐT</label>
+                                <input type="text" name="phone_column" value="{{ excel_config.phone_column }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="C">
                             </div>
                             <div>
-                                <label class="form-label">Cột Lương</label>
-                                <input type="text" name="salary_column" value="{{ excel_config.salary_column }}" class="form-input" placeholder="D">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột Lương</label>
+                                <input type="text" name="salary_column" value="{{ excel_config.salary_column }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="D">
                             </div>
                         </div>
                     </div>
 
-                    <div class="border-t pt-4">
-                        <h4 class="text-sm font-medium text-gray-700 mb-3">Cấu Hình Ảnh Lương</h4>
+                    <!-- Salary Slip Image Config -->
+                    <div class="pt-5 border-t border-slate-200 dark:border-slate-700">
+                        <h4 class="text-sm font-semibold text-slate-900 dark:text-white mb-4">Cấu Hình Ảnh Lương</h4>
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Sheet Phiếu Lương</label>
+                            <input type="text" name="salary_slip_sheet" value="{{ excel_config.get('salary_slip_sheet', 'Phiếu lương') }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="Phiếu lương">
+                        </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="form-label">Cột bắt đầu</label>
-                                <input type="text" name="image_start_col" value="{{ excel_config.get('image_start_col', 'B') }}" class="form-input" placeholder="B">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột bắt đầu</label>
+                                <input type="text" name="image_start_col" value="{{ excel_config.get('image_start_col', 'B') }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="B">
                             </div>
                             <div>
-                                <label class="form-label">Cột kết thúc</label>
-                                <input type="text" name="image_end_col" value="{{ excel_config.get('image_end_col', 'H') }}" class="form-input" placeholder="H">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Cột kết thúc</label>
+                                <input type="text" name="image_end_col" value="{{ excel_config.get('image_end_col', 'H') }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="H">
                             </div>
                             <div>
-                                <label class="form-label">Hàng bắt đầu</label>
-                                <input type="number" name="image_start_row" value="{{ excel_config.get('image_start_row', 4) }}" min="1" class="form-input">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Hàng bắt đầu</label>
+                                <input type="number" name="image_start_row" value="{{ excel_config.get('image_start_row', 4) }}" min="1" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                             </div>
                             <div>
-                                <label class="form-label">Hàng kết thúc</label>
-                                <input type="number" name="image_end_row" value="{{ excel_config.get('image_end_row', 29) }}" min="1" class="form-input">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Hàng kết thúc</label>
+                                <input type="number" name="image_end_row" value="{{ excel_config.get('image_end_row', 29) }}" min="1" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                             </div>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary w-full">
-                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button type="submit" class="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition-all shadow-sm hover:shadow cursor-pointer">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                         </svg>
                         Lưu Cấu Hình Excel
@@ -99,44 +109,55 @@
         </div>
 
         <!-- Webhook Configuration -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
-                    </svg>
+        <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden h-fit">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between">
+                <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+                    <div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+                        </svg>
+                    </div>
                     n8n Webhook
                 </h3>
-                <span class="badge {{ 'badge-green' if webhook_configured else 'badge-gray' }}">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {{ 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' if webhook_configured else 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400' }}">
+                    {% if webhook_configured %}
+                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></span>
+                    {% endif %}
                     {{ 'Đã cấu hình' if webhook_configured else 'Chưa cấu hình' }}
                 </span>
             </div>
-            <div class="card-body">
+            <div class="p-6">
                 <form
                     hx-post="/api/settings/webhook"
                     hx-target="#toast-container"
                     hx-swap="beforeend"
-                    class="space-y-4"
+                    class="space-y-5"
                 >
                     <div>
-                        <label class="form-label">Webhook URL</label>
-                        <input type="url" name="webhook_url" value="{{ webhook_config.webhook_url }}" class="form-input" placeholder="https://n8n.example.com/webhook/...">
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Webhook URL</label>
+                        <input type="url" name="webhook_url" value="{{ webhook_config.webhook_url }}" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all" placeholder="https://n8n.example.com/webhook/...">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="form-label">Timeout (giây)</label>
-                            <input type="number" name="timeout" value="{{ webhook_config.timeout }}" min="5" max="120" class="form-input">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Timeout (giây)</label>
+                            <input type="number" name="timeout" value="{{ webhook_config.timeout }}" min="5" max="120" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                         </div>
                         <div>
-                            <label class="form-label">Số lần thử lại</label>
-                            <input type="number" name="retry_count" value="{{ webhook_config.retry_count }}" min="0" max="5" class="form-input">
+                            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Số lần thử lại</label>
+                            <input type="number" name="retry_count" value="{{ webhook_config.retry_count }}" min="0" max="5" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all">
                         </div>
                     </div>
 
-                    <div class="flex gap-2">
-                        <button type="submit" class="btn btn-primary flex-1">
-                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nội dung tin nhắn</label>
+                        <textarea name="message_content" rows="3" class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all resize-none" placeholder="Ví dụ: Thông tin lương tháng 12">{{ webhook_config.message_content if webhook_config.message_content else '' }}</textarea>
+                        <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Nội dung sẽ được gửi kèm ảnh lương qua Zalo</p>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit" class="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition-all shadow-sm hover:shadow cursor-pointer">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
                             Lưu
@@ -144,9 +165,9 @@
                         <button
                             type="button"
                             @click="testWebhook()"
-                            class="btn btn-outline"
+                            class="inline-flex items-center justify-center px-5 py-3 text-sm font-medium rounded-xl border bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all cursor-pointer"
                         >
-                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             Test

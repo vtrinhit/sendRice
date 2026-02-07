@@ -1,5 +1,14 @@
 <div
-    class="toast toast-{{ type }}"
+    class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border
+        {% if type == 'success' %}
+        bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800
+        {% elif type == 'error' %}
+        bg-rose-50 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800
+        {% elif type == 'warning' %}
+        bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800
+        {% else %}
+        bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800
+        {% endif %}"
     x-data="{ show: true }"
     x-init="setTimeout(() => { show = false; $el.remove(); }, 5000)"
     x-show="show"
@@ -12,25 +21,30 @@
 >
     <div class="flex items-center gap-2">
         {% if type == 'success' %}
-        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         {% elif type == 'error' %}
-        <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         {% elif type == 'warning' %}
-        <svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
         </svg>
         {% else %}
-        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
         {% endif %}
-        <span>{{ message }}</span>
+        <span class="text-sm font-medium
+            {% if type == 'success' %}text-emerald-800 dark:text-emerald-200
+            {% elif type == 'error' %}text-rose-800 dark:text-rose-200
+            {% elif type == 'warning' %}text-amber-800 dark:text-amber-200
+            {% else %}text-indigo-800 dark:text-indigo-200
+            {% endif %}">{{ message }}</span>
     </div>
-    <button @click="show = false; $el.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600">
+    <button @click="show = false; $el.parentElement.remove()" class="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
         </svg>

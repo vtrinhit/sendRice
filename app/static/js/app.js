@@ -8,7 +8,7 @@
 // =====================
 
 /**
- * Show a toast notification
+ * Show a toast notification with Tailwind styling
  * @param {string} message - The message to display
  * @param {string} type - Type: 'success', 'error', 'warning', 'info'
  * @param {number} duration - Duration in milliseconds
@@ -17,41 +17,61 @@ function showToast(message, type = 'info', duration = 5000) {
     const container = document.getElementById('toast-container');
     if (!container) return;
 
-    const icons = {
-        success: `<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>`,
-        error: `<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>`,
-        warning: `<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-        </svg>`,
-        info: `<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>`
+    const configs = {
+        success: {
+            bg: 'bg-emerald-50 dark:bg-emerald-900/30',
+            border: 'border-emerald-200 dark:border-emerald-800',
+            text: 'text-emerald-800 dark:text-emerald-200',
+            icon: 'text-emerald-500',
+            iconPath: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        error: {
+            bg: 'bg-rose-50 dark:bg-rose-900/30',
+            border: 'border-rose-200 dark:border-rose-800',
+            text: 'text-rose-800 dark:text-rose-200',
+            icon: 'text-rose-500',
+            iconPath: 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'
+        },
+        warning: {
+            bg: 'bg-amber-50 dark:bg-amber-900/30',
+            border: 'border-amber-200 dark:border-amber-800',
+            text: 'text-amber-800 dark:text-amber-200',
+            icon: 'text-amber-500',
+            iconPath: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z'
+        },
+        info: {
+            bg: 'bg-indigo-50 dark:bg-indigo-900/30',
+            border: 'border-indigo-200 dark:border-indigo-800',
+            text: 'text-indigo-800 dark:text-indigo-200',
+            icon: 'text-indigo-500',
+            iconPath: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+        }
     };
 
+    const config = configs[type] || configs.info;
+
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${config.bg} ${config.border}`;
     toast.innerHTML = `
         <div class="flex items-center gap-2">
-            ${icons[type] || icons.info}
-            <span>${message}</span>
+            <svg class="w-5 h-5 ${config.icon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${config.iconPath}"></path>
+            </svg>
+            <span class="text-sm font-medium ${config.text}">${message}</span>
         </div>
-        <button onclick="this.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600">
+        <button onclick="this.parentElement.remove()" class="ml-auto text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors cursor-pointer">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
         </button>
     `;
 
-    // Animation
+    // Animation - slide from right
     toast.style.transform = 'translateX(100%)';
     toast.style.opacity = '0';
     toast.style.transition = 'all 300ms ease-out';
 
-    container.appendChild(toast);
+    container.prepend(toast);
 
     // Trigger animation
     requestAnimationFrame(() => {

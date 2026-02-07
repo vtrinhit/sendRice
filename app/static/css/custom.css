@@ -1,0 +1,252 @@
+/* SendRice - Design System CSS */
+
+/* ==========================================================================
+   1. HTMX & Alpine.js Integration
+   ========================================================================== */
+
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator {
+    display: inline-flex;
+}
+.htmx-request.htmx-indicator {
+    display: inline-flex;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+/* ==========================================================================
+   2. Smooth Transitions (only for interactive elements)
+   ========================================================================== */
+
+button,
+a,
+input,
+select,
+textarea,
+[class*="transition"] {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+/* ==========================================================================
+   3. Custom Scrollbar
+   ========================================================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* ==========================================================================
+   4. Focus Styles for Accessibility
+   ========================================================================== */
+
+:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+
+/* Remove default focus outline for mouse users */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ==========================================================================
+   5. Form Input Enhancements
+   ========================================================================== */
+
+/* Number input - hide spinners */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* File input styling enhancement */
+input[type="file"]::file-selector-button {
+    cursor: pointer;
+}
+
+/* ==========================================================================
+   6. Table Enhancements
+   ========================================================================== */
+
+/* Sticky header for tables */
+.table-sticky-header thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Table row hover with action reveal */
+.table-hover-actions tbody tr .actions {
+    opacity: 0;
+    transition: opacity 150ms ease-in-out;
+}
+
+.table-hover-actions tbody tr:hover .actions {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   7. Loading States
+   ========================================================================== */
+
+.htmx-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.htmx-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: inherit;
+}
+
+.dark .htmx-loading::after {
+    background: rgba(15, 23, 42, 0.5);
+}
+
+/* ==========================================================================
+   8. Animation Utilities
+   ========================================================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse-subtle {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 200ms ease-out;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 300ms ease-out;
+}
+
+.animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-shimmer {
+    animation: shimmer 1.5s infinite;
+}
+
+/* ==========================================================================
+   9. Sidebar Transitions
+   ========================================================================== */
+
+/* Smooth sidebar collapse transition */
+.sidebar-transition {
+    transition: width 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+/* Sidebar text fade during collapse */
+.sidebar-text-transition {
+    transition: opacity 200ms ease-in-out, width 200ms ease-in-out;
+}
+
+/* ==========================================================================
+   10. Print Styles
+   ========================================================================== */
+
+@media print {
+    body {
+        background: white !important;
+    }
+
+    header,
+    nav,
+    aside,
+    footer,
+    .no-print {
+        display: none !important;
+    }
+
+    main {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+}
+
+/* ==========================================================================
+   11. Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
