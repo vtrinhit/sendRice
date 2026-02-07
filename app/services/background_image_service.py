@@ -45,6 +45,7 @@ class SessionProgress:
     tasks: Dict[str, ImageTask] = field(default_factory=dict)
     subscribers: Set[asyncio.Queue] = field(default_factory=set)
     is_running: bool = False
+    cancelled: bool = False
 
 
 class BackgroundImageService:
@@ -70,6 +71,8 @@ class BackgroundImageService:
         self.executor = ThreadPoolExecutor(max_workers=max_workers)
         self.sessions: Dict[str, SessionProgress] = {}
         self._lock = asyncio.Lock()
+        # Track the current active session - only this session's results are saved
+        self._current_session_key: Optional[str] = None
 
     async def start_generation(
         self,
@@ -93,6 +96,14 @@ class BackgroundImageService:
         session_key = str(session_id)
 
         async with self._lock:
+            # Mark all existing sessions as cancelled
+            for old_key, old_progress in self.sessions.items():
+                old_progress.cancelled = True
+                logger.info(f"Marked session {old_key} as cancelled")
+
+            # Set this as the current active session
+            self._current_session_key = session_key
+
             # Create progress tracker
             progress = SessionProgress(
                 session_id=session_id,
@@ -154,6 +165,12 @@ class BackgroundImageService:
             if emp.get("employee_code")
         ]
 
+        # Check if cancelled before processing
+        if progress.cancelled or self._current_session_key != session_key:
+            progress.is_running = False
+            logger.info(f"Session {session_key} cancelled or superseded, skipping processing")
+            return
+
         # Mark employees without code as failed immediately
         for emp in employees:
             if not emp.get("employee_code"):
@@ -204,6 +221,15 @@ class BackgroundImageService:
 
         # Create callback for real-time updates
         async def on_result(emp_code: str, result: BatchResult):
+            # Skip if this is not the current active session
+            if self._current_session_key != session_key:
+                logger.info(f"Skipping result for {emp_code} - session {session_key} is no longer active")
+                return
+
+            # Skip if session was cancelled
+            if progress.cancelled:
+                return
+
             emp = code_to_emp.get(emp_code)
             if not emp:
                 return
@@ -291,12 +317,20 @@ class BackgroundImageService:
                     )
 
         progress.is_running = False
-        await self._notify_subscribers(session_key, {
-            "type": "complete",
-            "total": progress.total,
-            "completed": progress.completed,
-            "failed": progress.failed
-        })
+
+        # Only notify if this is still the current session
+        if self._current_session_key == session_key:
+            await self._notify_subscribers(session_key, {
+                "type": "complete",
+                "total": progress.total,
+                "completed": progress.completed,
+                "failed": progress.failed
+            })
+        else:
+            # Clean up old session
+            logger.info(f"Session {session_key} completed but is no longer active, cleaning up")
+            if session_key in self.sessions:
+                del self.sessions[session_key]
 
     async def _update_employee_status(
         self,
@@ -412,6 +446,16 @@ class BackgroundImageService:
         """Clean up session data."""
         if session_key in self.sessions:
             del self.sessions[session_key]
+
+    async def cancel_all_running(self):
+        """Cancel all existing sessions. Called before starting a new generation."""
+        async with self._lock:
+            for session_key, progress in list(self.sessions.items()):
+                # Cancel regardless of is_running state to avoid race conditions
+                progress.cancelled = True
+                logger.info(f"Cancelled session: {session_key}")
+            # Note: Don't clear sessions here - let start_generation handle it
+            # to avoid race conditions with the new session
 
 
 # Singleton instance

@@ -22,9 +22,6 @@
                     class="w-full rounded-lg shadow-lg"
                 >
             </div>
-            <div class="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
-                <span>URL: <a href="{{ employee.salary_image_url }}" target="_blank" class="text-indigo-600 dark:text-indigo-400 hover:underline">Mở trong tab mới</a></span>
-            </div>
             {% else %}
             <div class="text-center py-12">
                 <svg class="w-16 h-16 text-slate-300 dark:text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +46,7 @@
         <div class="px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <div class="flex items-center gap-4">
                 <div class="flex-1">
-                    <div class="grid grid-cols-3 gap-4 text-sm">
+                    <div class="grid grid-cols-2 gap-4 text-sm">
                         <div>
                             <span class="text-slate-500 dark:text-slate-400">Mã NV:</span>
                             <span class="font-medium text-slate-900 dark:text-white ml-1">{{ employee.employee_code or '-' }}</span>
@@ -57,10 +54,6 @@
                         <div>
                             <span class="text-slate-500 dark:text-slate-400">SĐT:</span>
                             <span class="font-mono text-slate-900 dark:text-white ml-1">{{ employee.phone or '-' }}</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 dark:text-slate-400">Lương:</span>
-                            <span class="font-medium text-slate-900 dark:text-white ml-1">{{ employee.formatted_salary }}</span>
                         </div>
                     </div>
                 </div>

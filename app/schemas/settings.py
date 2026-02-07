@@ -50,6 +50,7 @@ class WebhookConfigSchema(BaseModel):
     timeout: int = Field(default=30, description="Timeout (giây)", ge=5, le=120)
     retry_count: int = Field(default=3, description="Số lần thử lại", ge=0, le=5)
     message_content: str = Field(default="", description="Nội dung tin nhắn kèm ảnh lương")
+    send_delay: int = Field(default=3, description="Delay giữa mỗi tin nhắn (giây)", ge=0, le=60)
 
 
 class AllSettingsResponse(BaseModel):

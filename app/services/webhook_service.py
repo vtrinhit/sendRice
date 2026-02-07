@@ -163,7 +163,7 @@ class WebhookService:
         return list(results)
 
     async def test_webhook(self) -> WebhookResponse:
-        """Test webhook connectivity with a dummy payload."""
+        """Test webhook connectivity with a test payload."""
         if not self.is_configured():
             return WebhookResponse(
                 status="failed",
@@ -172,8 +172,20 @@ class WebhookService:
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                # Just test connectivity, don't send actual data
-                response = await client.get(self.webhook_url)
+                # Send test payload with POST (same as actual notifications)
+                test_payload = {
+                    "sdt": "0000000000",
+                    "ten": "Test User",
+                    "luong": 0,
+                    "hinhanh": "",
+                    "content": "Test connection from SendRice",
+                    "is_test": True
+                }
+                response = await client.post(
+                    self.webhook_url,
+                    json=test_payload,
+                    headers={"Content-Type": "application/json"}
+                )
                 return WebhookResponse(
                     status="success",
                     message=f"Webhook reachable (HTTP {response.status_code})"

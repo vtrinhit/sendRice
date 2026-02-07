@@ -3,6 +3,7 @@ Employees Router
 Handles employee CRUD and sending operations.
 """
 import asyncio
+import json
 import os
 import uuid
 from typing import Dict, List, Optional
@@ -12,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
+from sse_starlette.sse import EventSourceResponse
 
 from app.database import get_db
 from app.models import Employee, SendHistory, ImportSession, AppSetting, User
@@ -20,6 +22,7 @@ from app.schemas.employee import EmployeeResponse, EmployeeUpdateRequest
 from app.schemas.send import SendRequest, SendResponse, BatchSendRequest, BatchSendResponse
 from app.services.salary_slip_service_optimized import optimized_salary_slip_service, OptimizedSalarySlipService
 from app.services.webhook_service import webhook_service
+from app.services.background_send_service import background_send_service
 from app.config import settings
 from app.helpers import get_image_config, get_webhook_config
 
@@ -206,92 +209,77 @@ async def batch_send_notifications(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Send notifications to multiple employees."""
+    """Start background batch send with delay between each message."""
     # Convert string IDs to UUIDs
     employee_uuids = [parse_uuid(str(eid), "employee ID") for eid in data.employee_ids]
 
-    # Get all employees
-    result = await db.execute(
-        select(Employee).where(Employee.id.in_(employee_uuids))
-    )
-    employees = result.scalars().all()
-
-    # Prepare employee data for batch send
-    employees_data = []
-    for emp in employees:
-        # Extract base64 from data URL
-        image_base64 = None
-        if emp.salary_image_url:
-            if emp.salary_image_url.startswith("data:image/png;base64,"):
-                image_base64 = emp.salary_image_url.replace("data:image/png;base64,", "")
-            else:
-                image_base64 = emp.salary_image_url
-
-        employees_data.append({
-            "id": emp.id,
-            "phone": emp.phone,
-            "name": emp.name,
-            "salary": emp.salary,
-            "image_base64": image_base64,
-        })
-
-    # Get webhook config for message content
+    # Get webhook config
     webhook_config = await get_webhook_config(db)
     message_content = webhook_config.get("message_content", "")
 
-    # Send batch
-    results = await webhook_service.send_batch(employees_data, content=message_content)
+    # Generate batch ID
+    batch_id = str(uuid.uuid4())
 
-    # Create send history records
-    for send_result in results:
-        send_record = SendHistory(
-            employee_id=send_result.employee_id,
-            status=send_result.status,
-            error_message=send_result.message if send_result.status == "failed" else None
-        )
-        db.add(send_record)
-
-    await db.commit()
-
-    success_count = sum(1 for r in results if r.status == "success")
-    failed_count = len(results) - success_count
-
-    # Return HTMX partial if requested
-    if request.headers.get("HX-Request"):
-        # Get the session_id from one of the employees to fetch ALL employees
-        if employees:
-            session_id = employees[0].session_id
-            # Refresh ALL employees of this session (not just selected)
-            result = await db.execute(
-                select(Employee)
-                .options(selectinload(Employee.send_history))
-                .where(Employee.session_id == session_id)
-                .order_by(Employee.row_number)
-            )
-            updated_employees = result.scalars().all()
-        else:
-            updated_employees = []
-
-        return templates.TemplateResponse(
-            "partials/employee_table.html",
-            {
-                "request": request,
-                "employees": updated_employees,
-                "total_employees": len(updated_employees),
-                "batch_result": {
-                    "total": len(results),
-                    "success": success_count,
-                    "failed": failed_count
-                }
-            }
-        )
-
-    return BatchSendResponse(
-        total=len(results),
-        success=success_count,
-        failed=failed_count,
-        results=results
+    # Start background batch send
+    await background_send_service.start_batch_send(
+        batch_id=batch_id,
+        employee_ids=employee_uuids,
+        webhook_config=webhook_config,
+        message_content=message_content
     )
+
+    # Return batch ID for SSE tracking
+    return {"batch_id": batch_id, "total": len(employee_uuids)}
+
+
+@router.get("/batch/send/{batch_id}/sse")
+async def batch_send_sse(
+    batch_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_active_user)
+):
+    """SSE endpoint for real-time batch send updates."""
+
+    async def event_generator():
+        queue = await background_send_service.subscribe(batch_id)
+        try:
+            while True:
+                # Check if client disconnected
+                if await request.is_disconnected():
+                    break
+
+                try:
+                    # Wait for events with timeout
+                    data = await asyncio.wait_for(queue.get(), timeout=30)
+                    yield {
+                        "event": data.get("type", "message"),
+                        "data": json.dumps(data)
+                    }
+
+                    # Stop if send is complete
+                    if data.get("type") == "complete":
+                        break
+
+                except asyncio.TimeoutError:
+                    # Send keepalive
+                    yield {"event": "ping", "data": ""}
+
+        finally:
+            background_send_service.unsubscribe(batch_id, queue)
+
+    return EventSourceResponse(event_generator())
+
+
+@router.get("/batch/send/{batch_id}/progress")
+async def get_batch_send_progress(
+    batch_id: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current batch send progress."""
+    progress = background_send_service.get_progress(batch_id)
+    if not progress:
+        return {"total": 0, "sent": 0, "failed": 0, "pending": 0, "is_running": False}
+    return progress
 
 
 # =============================================================================

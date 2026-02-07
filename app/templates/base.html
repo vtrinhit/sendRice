@@ -43,6 +43,26 @@
     <!-- Custom styles -->
     <link rel="stylesheet" href="/static/css/custom.css">
 
+    <!-- Pre-apply sidebar state to prevent flash -->
+    <script>
+        (function() {
+            var collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (collapsed) {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
+    <style>
+        /* Hide elements with x-cloak until Alpine is ready */
+        [x-cloak] { display: none !important; }
+        /* Pre-apply collapsed state before Alpine loads (lg breakpoint: 1024px+) */
+        @media (min-width: 1024px) {
+            .sidebar-collapsed .sidebar-nav { width: 5rem !important; }
+            .sidebar-collapsed .sidebar-content { margin-left: 5rem !important; }
+            .sidebar-collapsed .sidebar-text { display: none !important; }
+        }
+    </style>
+
     <!-- HTMX -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
@@ -76,7 +96,7 @@
                 sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
                 sidebarMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
             ]"
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ease-in-out flex flex-col"
+            class="sidebar-nav fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ease-in-out flex flex-col"
         >
             <!-- Logo -->
             <div class="h-16 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-700">
@@ -86,7 +106,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
-                    <span class="font-bold text-xl text-slate-900 dark:text-white transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">SendRice</span>
+                    <span class="sidebar-text font-bold text-xl text-slate-900 dark:text-white transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">SendRice</span>
                 </a>
                 <!-- Mobile close button -->
                 <button @click="sidebarMobileOpen = false" class="lg:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer">
@@ -97,7 +117,7 @@
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+            <nav class="flex-1 py-4 space-y-1 overflow-y-auto px-3" :class="{ 'lg:px-2': sidebarCollapsed }">
                 <a href="/"
                    class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer group
                        {% if request.url.path == '/' %}
@@ -105,13 +125,13 @@
                        {% else %}
                        text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white
                        {% endif %}"
-                   :class="{ 'justify-center': sidebarCollapsed }"
+                   :class="{ 'lg:justify-center lg:px-0': sidebarCollapsed }"
                    :title="sidebarCollapsed ? 'Trang chính' : ''"
                 >
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                     </svg>
-                    <span class="transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">Trang chính</span>
+                    <span class="sidebar-text transition-opacity duration-200 whitespace-nowrap" :class="{ 'lg:hidden': sidebarCollapsed }">Trang chính</span>
                 </a>
 
                 <a href="/api/settings/page"
@@ -121,58 +141,58 @@
                        {% else %}
                        text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 hover:text-slate-900 dark:hover:text-white
                        {% endif %}"
-                   :class="{ 'justify-center': sidebarCollapsed }"
+                   :class="{ 'lg:justify-center lg:px-0': sidebarCollapsed }"
                    :title="sidebarCollapsed ? 'Cài đặt' : ''"
                 >
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     </svg>
-                    <span class="transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">Cài đặt</span>
+                    <span class="sidebar-text transition-opacity duration-200 whitespace-nowrap" :class="{ 'lg:hidden': sidebarCollapsed }">Cài đặt</span>
                 </a>
 
                 <!-- Divider with section label -->
-                <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700" :class="{ 'border-0': sidebarCollapsed }">
-                    <p class="px-3 mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider transition-opacity duration-200" :class="{ 'lg:opacity-0': sidebarCollapsed }">Sắp ra mắt</p>
+                <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700" :class="{ 'lg:border-0': sidebarCollapsed }">
+                    <p class="sidebar-text px-3 mb-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider transition-opacity duration-200" :class="{ 'lg:hidden': sidebarCollapsed }">Sắp ra mắt</p>
 
                     <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 dark:text-slate-500 cursor-not-allowed"
-                         :class="{ 'justify-center': sidebarCollapsed }"
+                         :class="{ 'lg:justify-center lg:px-0': sidebarCollapsed }"
                          :title="sidebarCollapsed ? 'Báo cáo' : ''">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
                         </svg>
-                        <span class="transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">Báo cáo</span>
+                        <span class="sidebar-text transition-opacity duration-200 whitespace-nowrap" :class="{ 'lg:hidden': sidebarCollapsed }">Báo cáo</span>
                     </div>
 
                     <div class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 dark:text-slate-500 cursor-not-allowed"
-                         :class="{ 'justify-center': sidebarCollapsed }"
+                         :class="{ 'lg:justify-center lg:px-0': sidebarCollapsed }"
                          :title="sidebarCollapsed ? 'Lịch sử' : ''">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <span class="transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">Lịch sử</span>
+                        <span class="sidebar-text transition-opacity duration-200 whitespace-nowrap" :class="{ 'lg:hidden': sidebarCollapsed }">Lịch sử</span>
                     </div>
                 </div>
             </nav>
 
             <!-- Sidebar Footer -->
-            <div class="p-3 border-t border-slate-200 dark:border-slate-700">
+            <div class="py-3 px-3 border-t border-slate-200 dark:border-slate-700" :class="{ 'lg:px-2': sidebarCollapsed }">
                 <!-- Collapse toggle (desktop) -->
                 <button
                     @click="sidebarCollapsed = !sidebarCollapsed; localStorage.setItem('sidebarCollapsed', sidebarCollapsed)"
                     class="hidden lg:flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-                    :class="{ 'justify-center': sidebarCollapsed }"
+                    :class="{ 'justify-center px-0': sidebarCollapsed }"
                 >
                     <svg class="w-5 h-5 flex-shrink-0 transition-transform duration-300" :class="{ 'rotate-180': sidebarCollapsed }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
                     </svg>
-                    <span class="transition-opacity duration-200" :class="{ 'lg:opacity-0 lg:w-0 lg:overflow-hidden': sidebarCollapsed }">Thu gọn</span>
+                    <span class="sidebar-text transition-opacity duration-200 whitespace-nowrap" :class="{ 'lg:hidden': sidebarCollapsed }">Thu gọn</span>
                 </button>
             </div>
         </aside>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-h-screen transition-all duration-300" :class="sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'">
+        <div class="sidebar-content flex-1 flex flex-col min-h-screen transition-all duration-300" :class="sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'">
             <!-- Top Header -->
             <header class="sticky top-0 z-30 h-16 bg-white/80 dark:bg-slate-800/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-700">
                 <div class="h-full px-4 sm:px-6 flex items-center justify-between gap-4">

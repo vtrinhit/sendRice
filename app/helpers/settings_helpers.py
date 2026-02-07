@@ -48,7 +48,7 @@ async def get_webhook_config(db: AsyncSession) -> Dict[str, Any]:
         db: Async database session
 
     Returns:
-        Dictionary with webhook_url, timeout, retry_count, message_content
+        Dictionary with webhook_url, timeout, retry_count, message_content, send_delay
     """
     result = await db.execute(
         select(AppSetting).where(AppSetting.key == "webhook_config")
@@ -60,7 +60,8 @@ async def get_webhook_config(db: AsyncSession) -> Dict[str, Any]:
             "webhook_url": "",
             "timeout": 30,
             "retry_count": 3,
-            "message_content": ""
+            "message_content": "",
+            "send_delay": 3
         }
 
     return {
@@ -68,4 +69,5 @@ async def get_webhook_config(db: AsyncSession) -> Dict[str, Any]:
         "timeout": setting.value.get("timeout", 30),
         "retry_count": setting.value.get("retry_count", 3),
         "message_content": setting.value.get("message_content", ""),
+        "send_delay": setting.value.get("send_delay", 3),
     }

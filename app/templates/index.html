@@ -88,16 +88,8 @@
 
     <!-- Upload Section -->
     <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden" x-data="uploadManager()">
-        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-            <h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
-                <svg class="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                </svg>
-                Import File Excel
-            </h3>
-        </div>
         <div class="p-6 relative">
-            <!-- Upload Form -->
+            <!-- Upload Form with Drag & Drop -->
             <form
                 id="upload-form"
                 hx-post="/upload"
@@ -106,70 +98,102 @@
                 hx-encoding="multipart/form-data"
                 @htmx:before-request="isUploading = true; fileName = $refs.fileInput.files[0]?.name || 'file'"
                 @htmx:after-request="isUploading = false"
-                class="flex flex-col sm:flex-row items-stretch sm:items-end gap-4"
-                :class="{ 'opacity-50 pointer-events-none': isUploading }"
+                :class="{ 'pointer-events-none': isUploading }"
             >
-                <div class="flex-1">
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">File Excel (.xlsx)</label>
-                    <div class="relative">
-                        <input
-                            type="file"
-                            name="file"
-                            accept=".xlsx,.xls"
-                            required
-                            x-ref="fileInput"
-                            @change="fileName = $event.target.files[0]?.name || ''"
-                            class="w-full px-4 py-2.5 text-sm border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-700 text-slate-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 dark:file:bg-primary-900/30 file:text-primary-600 dark:file:text-primary-400 hover:file:bg-primary-100 dark:hover:file:bg-primary-900/50 cursor-pointer transition-colors"
-                        >
-                    </div>
-                </div>
-                <button type="submit" class="inline-flex items-center justify-center px-5 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition-all shadow-sm hover:shadow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" :disabled="isUploading">
-                    <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                    </svg>
-                    Upload
-                </button>
-            </form>
+                <!-- Drop Zone -->
+                <div
+                    class="relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer"
+                    :class="isDragging ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-slate-300 dark:border-slate-600 hover:border-primary-400 dark:hover:border-primary-500 hover:bg-slate-50 dark:hover:bg-slate-700/50'"
+                    @dragover.prevent="isDragging = true"
+                    @dragleave.prevent="isDragging = false"
+                    @drop.prevent="handleDrop($event)"
+                    @click="$refs.fileInput.click()"
+                >
+                    <input
+                        type="file"
+                        name="file"
+                        accept=".xlsx,.xls"
+                        required
+                        x-ref="fileInput"
+                        @change="handleFileSelect($event)"
+                        class="hidden"
+                    >
 
-            <!-- Loading Overlay -->
-            <div
-                x-show="isUploading"
-                x-transition:enter="transition ease-out duration-200"
-                x-transition:enter-start="opacity-0"
-                x-transition:enter-end="opacity-100"
-                x-transition:leave="transition ease-in duration-150"
-                x-transition:leave-start="opacity-100"
-                x-transition:leave-end="opacity-0"
-                class="absolute inset-0 bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center z-10"
-                x-cloak
-            >
-                <div class="text-center">
-                    <!-- Animated Upload Icon -->
-                    <div class="relative w-16 h-16 mx-auto mb-4">
-                        <!-- Background circle -->
-                        <div class="absolute inset-0 bg-primary-100 dark:bg-primary-900/30 rounded-full"></div>
-                        <!-- Spinning border -->
-                        <div class="absolute inset-0 rounded-full border-2 border-transparent border-t-primary-600 dark:border-t-primary-400 animate-spin"></div>
-                        <!-- Center icon -->
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <svg class="w-7 h-7 text-primary-600 dark:text-primary-400 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <!-- Default State -->
+                    <div x-show="!fileName && !isUploading">
+                        <div class="w-14 h-14 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-7 h-7 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                             </svg>
                         </div>
+                        <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">
+                            Kéo thả file Excel vào đây
+                        </p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                            hoặc click để chọn file
+                        </p>
+                        <span class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                            <svg class="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            .xlsx, .xls
+                        </span>
                     </div>
 
-                    <!-- Status Text -->
-                    <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Đang xử lý file...</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto" x-text="fileName ? 'File: ' + fileName : 'Vui lòng chờ trong giây lát'"></p>
+                    <!-- File Selected State -->
+                    <div x-show="fileName && !isUploading" x-cloak>
+                        <div class="w-14 h-14 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-7 h-7 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <p class="text-sm font-medium text-slate-900 dark:text-white mb-1" x-text="fileName"></p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Sẵn sàng upload</p>
+                        <div class="flex items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                @click.stop="clearFile()"
+                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors cursor-pointer"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Hủy
+                            </button>
+                            <button
+                                type="submit"
+                                @click.stop
+                                class="inline-flex items-center px-4 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors cursor-pointer"
+                            >
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                                </svg>
+                                Upload ngay
+                            </button>
+                        </div>
+                    </div>
 
-                    <!-- Progress dots -->
-                    <div class="flex items-center justify-center gap-1 mt-3">
-                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
-                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
-                        <span class="w-2 h-2 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
+                    <!-- Uploading State -->
+                    <div x-show="isUploading" x-cloak>
+                        <div class="relative w-14 h-14 mx-auto mb-4">
+                            <div class="absolute inset-0 bg-primary-100 dark:bg-primary-900/30 rounded-xl"></div>
+                            <div class="absolute inset-0 rounded-xl border-2 border-transparent border-t-primary-600 dark:border-t-primary-400 animate-spin"></div>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <svg class="w-6 h-6 text-primary-600 dark:text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <p class="text-sm font-medium text-slate-900 dark:text-white mb-1">Đang xử lý...</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" x-text="fileName"></p>
+                        <div class="flex items-center justify-center gap-1 mt-3">
+                            <span class="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 0ms;"></span>
+                            <span class="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 150ms;"></span>
+                            <span class="w-1.5 h-1.5 bg-primary-600 dark:bg-primary-400 rounded-full animate-bounce" style="animation-delay: 300ms;"></span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
@@ -177,6 +201,66 @@
     {% if session %}
     <div class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-6 overflow-hidden">
         <div class="p-4">
+            <!-- Search and Filter Row -->
+            <div class="flex flex-col lg:flex-row lg:items-center gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <!-- Search Input -->
+                <div class="flex-1">
+                    <div class="relative">
+                        <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input
+                            type="text"
+                            x-model="searchQuery"
+                            @input="filterEmployees()"
+                            placeholder="Tìm theo tên, mã NV, SĐT..."
+                            class="w-full pl-10 pr-4 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+                        >
+                    </div>
+                </div>
+
+                <!-- Filter Buttons -->
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs text-slate-500 dark:text-slate-400 mr-1">Lọc:</span>
+                    <button
+                        @click="setFilter('all')"
+                        :class="activeFilter === 'all' ? 'bg-primary-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                        Tất cả
+                    </button>
+                    <button
+                        @click="setFilter('no_image')"
+                        :class="activeFilter === 'no_image' ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                        Chưa có ảnh
+                    </button>
+                    <button
+                        @click="setFilter('has_image')"
+                        :class="activeFilter === 'has_image' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                        Đã có ảnh
+                    </button>
+                    <button
+                        @click="setFilter('not_sent')"
+                        :class="activeFilter === 'not_sent' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                        Chưa gửi
+                    </button>
+                    <button
+                        @click="setFilter('sent')"
+                        :class="activeFilter === 'sent' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'"
+                        class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                    >
+                        Đã gửi
+                    </button>
+                </div>
+            </div>
+
+            <!-- Actions Row -->
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
                     <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
@@ -184,6 +268,9 @@
                     </span>
                     <span class="text-sm text-slate-500 dark:text-slate-400" x-show="selectedCount > 0">
                         Đã chọn: <span class="font-semibold text-slate-700 dark:text-slate-200" x-text="selectedCount"></span>
+                    </span>
+                    <span class="text-sm text-slate-500 dark:text-slate-400" x-show="visibleCount !== totalCount">
+                        Hiển thị: <span class="font-semibold text-slate-700 dark:text-slate-200" x-text="visibleCount + '/' + totalCount"></span>
                     </span>
                 </div>
                 <div class="flex items-center gap-2">
@@ -208,126 +295,6 @@
                         </svg>
                         <span x-text="isSending ? 'Đang gửi...' : 'Gửi Zalo'"></span>
                     </button>
-                </div>
-            </div>
-
-            <!-- Progress Section -->
-            <div x-show="isGenerating || progress.total > 0" x-cloak
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 -translate-y-2"
-                 x-transition:enter-end="opacity-100 translate-y-0"
-                 class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-
-                <!-- Progress Header -->
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <div class="relative">
-                            <div class="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 rounded-xl flex items-center justify-center">
-                                <svg x-show="isGenerating" class="w-5 h-5 text-primary-600 dark:text-primary-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <svg x-show="!isGenerating && progress.failed === 0" class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                <svg x-show="!isGenerating && progress.failed > 0" class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                                </svg>
-                            </div>
-                            <!-- Pulse ring when processing -->
-                            <div x-show="isGenerating" class="absolute inset-0 rounded-xl bg-primary-400/30 animate-ping"></div>
-                        </div>
-                        <div>
-                            <h4 class="text-sm font-semibold text-slate-900 dark:text-white">
-                                <span x-show="isGenerating">Đang tạo ảnh...</span>
-                                <span x-show="!isGenerating && progress.failed === 0">Hoàn thành</span>
-                                <span x-show="!isGenerating && progress.failed > 0">Hoàn thành với lỗi</span>
-                            </h4>
-                            <p class="text-xs text-slate-500 dark:text-slate-400" x-text="`${progress.completed + progress.failed} / ${progress.total} ảnh`"></p>
-                        </div>
-                    </div>
-
-                    <!-- Percentage -->
-                    <div class="text-right">
-                        <span class="text-2xl font-bold" :class="progress.failed > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-primary-600 dark:text-primary-400'"
-                              x-text="`${progress.total > 0 ? Math.round((progress.completed + progress.failed) / progress.total * 100) : 0}%`"></span>
-                    </div>
-                </div>
-
-                <!-- Progress Bar -->
-                <div class="relative h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <!-- Success portion -->
-                    <div class="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
-                         :style="`width: ${progress.total > 0 ? (progress.completed / progress.total * 100) : 0}%`"></div>
-                    <!-- Failed portion (stacked after success) -->
-                    <div class="absolute inset-y-0 bg-gradient-to-r from-rose-500 to-rose-400 rounded-full transition-all duration-500 ease-out"
-                         :style="`left: ${progress.total > 0 ? (progress.completed / progress.total * 100) : 0}%; width: ${progress.total > 0 ? (progress.failed / progress.total * 100) : 0}%`"></div>
-                    <!-- Processing indicator -->
-                    <div x-show="isGenerating" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-                </div>
-
-                <!-- Stats Grid -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-                    <!-- Completed -->
-                    <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-3 border border-emerald-100 dark:border-emerald-800/30">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-emerald-700 dark:text-emerald-300" x-text="progress.completed"></p>
-                                <p class="text-xs text-emerald-600 dark:text-emerald-400">Thành công</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Processing -->
-                    <div class="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3 border border-amber-100 dark:border-amber-800/30">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" :class="{ 'animate-spin': progress.processing > 0 }" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-amber-700 dark:text-amber-300" x-text="progress.processing"></p>
-                                <p class="text-xs text-amber-600 dark:text-amber-400">Đang xử lý</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Failed -->
-                    <div class="bg-rose-50 dark:bg-rose-900/20 rounded-xl p-3 border border-rose-100 dark:border-rose-800/30">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 bg-rose-100 dark:bg-rose-900/50 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-rose-700 dark:text-rose-300" x-text="progress.failed"></p>
-                                <p class="text-xs text-rose-600 dark:text-rose-400">Thất bại</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Pending -->
-                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-3 border border-slate-200 dark:border-slate-600">
-                        <div class="flex items-center gap-2">
-                            <div class="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-slate-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-lg font-bold text-slate-700 dark:text-slate-300" x-text="progress.pending"></p>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">Chờ xử lý</p>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -362,11 +329,35 @@
 
 {% block scripts %}
 <script>
-// Upload Manager - handles file upload loading state
+// Upload Manager - handles file upload with drag & drop
 function uploadManager() {
     return {
         isUploading: false,
-        fileName: ''
+        isDragging: false,
+        fileName: '',
+
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                this.fileName = file.name;
+            }
+        },
+
+        handleDrop(event) {
+            this.isDragging = false;
+            const file = event.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+                this.$refs.fileInput.files = event.dataTransfer.files;
+                this.fileName = file.name;
+            } else {
+                showToast('Vui lòng chọn file Excel (.xlsx, .xls)', 'error');
+            }
+        },
+
+        clearFile() {
+            this.$refs.fileInput.value = '';
+            this.fileName = '';
+        }
     }
 }
 
@@ -379,6 +370,10 @@ function employeeManager() {
         isGenerating: false,
         isSending: false,
         eventSource: null,
+        searchQuery: '',
+        activeFilter: 'all',
+        visibleCount: 0,
+        totalCount: 0,
         progress: {
             total: 0,
             completed: 0,
@@ -392,24 +387,46 @@ function employeeManager() {
             document.querySelectorAll('[data-employee-id]').forEach(el => {
                 this.employees.push(el.dataset.employeeId);
             });
+            this.totalCount = this.employees.length;
+            this.visibleCount = this.employees.length;
 
             // Start SSE connection if session exists
             if (this.sessionId) {
                 this.connectSSE();
             }
 
-            // Listen for upload completion to start SSE
+            // Listen for upload completion
             document.body.addEventListener('htmx:afterSwap', (e) => {
                 if (e.detail.target.id === 'employee-table-container') {
-                    // Re-init employees
-                    this.employees = [];
-                    document.querySelectorAll('[data-employee-id]').forEach(el => {
-                        this.employees.push(el.dataset.employeeId);
-                    });
-                    // Reload page to get session ID for SSE
-                    setTimeout(() => window.location.reload(), 500);
+                    // After file upload, always reload to ensure clean state
+                    // This ensures stats, action bar, and all data are fresh
+                    window.location.reload();
                 }
             });
+
+            // Listen for HTMX request completion to update stats
+            document.body.addEventListener('htmx:afterRequest', (e) => {
+                // Update stats after send requests
+                if (e.detail.pathInfo && e.detail.pathInfo.requestPath && e.detail.pathInfo.requestPath.includes('/send')) {
+                    setTimeout(() => this.updateStats(), 100);
+                }
+            });
+        },
+
+        async refreshSessionAndConnect() {
+            // Fetch current session info without full page reload
+            try {
+                const response = await fetch('/api/session/current');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.session_id && data.session_id !== this.sessionId) {
+                        this.sessionId = data.session_id;
+                        this.connectSSE();
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to refresh session:', e);
+            }
         },
 
         connectSSE() {
@@ -446,8 +463,8 @@ function employeeManager() {
                     showToast(`${data.failed} ảnh thất bại`, 'error');
                 }
 
-                // Refresh table to get final state
-                setTimeout(() => window.location.reload(), 1000);
+                // Update stats without page reload
+                this.updateStats();
             });
 
             this.eventSource.addEventListener('ping', () => {
@@ -569,37 +586,118 @@ function employeeManager() {
 
             const ids = Array.from(this.selected);
             this.isSending = true;
-            showToast(`Đang gửi ${ids.length} thông báo...`, 'info');
+            showToast(`Bắt đầu gửi ${ids.length} thông báo...`, 'info');
 
             try {
+                // Start batch send and get batch ID
                 const response = await fetch('/api/employees/batch/send', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'HX-Request': 'true'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ employee_ids: ids })
                 });
 
                 if (response.ok) {
-                    const html = await response.text();
-                    document.getElementById('employee-table-container').innerHTML = html;
-                    showToast('Đã gửi thông báo thành công', 'success');
-                    this.selected.clear();
-                    this.allSelected = false;
-                    // Re-init employees list
-                    this.employees = [];
-                    document.querySelectorAll('[data-employee-id]').forEach(el => {
-                        this.employees.push(el.dataset.employeeId);
-                    });
+                    const data = await response.json();
+                    const batchId = data.batch_id;
+
+                    // Connect to SSE for progress updates
+                    this.connectSendSSE(batchId);
                 } else {
                     const error = await response.json();
                     showToast('Lỗi: ' + (error.detail || 'Không thể gửi'), 'error');
+                    this.isSending = false;
                 }
             } catch (error) {
                 showToast('Lỗi: ' + error.message, 'error');
-            } finally {
                 this.isSending = false;
+            }
+        },
+
+        connectSendSSE(batchId) {
+            const sendEventSource = new EventSource(`/api/employees/batch/send/${batchId}/sse`);
+
+            sendEventSource.addEventListener('init', (e) => {
+                const data = JSON.parse(e.data);
+                // Initial state
+            });
+
+            sendEventSource.addEventListener('status', (e) => {
+                const data = JSON.parse(e.data);
+                // Update row status in real-time
+                this.updateRowSendStatus(data.employee_id, data.status, data.error);
+
+                if (data.status === 'sending') {
+                    // Show which employee is being sent
+                } else if (data.status === 'success') {
+                    // Success indicator
+                } else if (data.status === 'failed') {
+                    // Failed indicator
+                }
+            });
+
+            sendEventSource.addEventListener('complete', (e) => {
+                const data = JSON.parse(e.data);
+                sendEventSource.close();
+                this.isSending = false;
+
+                // Show completion toast
+                if (data.sent > 0) {
+                    showToast(`Đã gửi ${data.sent}/${data.total} tin nhắn thành công`, 'success');
+                }
+                if (data.failed > 0) {
+                    showToast(`${data.failed} tin nhắn thất bại`, 'error');
+                }
+
+                // Update stats and clear selection
+                this.updateStats();
+                this.selected.clear();
+                this.allSelected = false;
+            });
+
+            sendEventSource.addEventListener('ping', () => {
+                // Keepalive
+            });
+
+            sendEventSource.onerror = () => {
+                this.isSending = false;
+                sendEventSource.close();
+            };
+        },
+
+        updateRowSendStatus(employeeId, status, error) {
+            const row = document.querySelector(`[data-employee-id="${employeeId}"]`);
+            if (!row) return;
+
+            // Update data attribute
+            row.dataset.sendStatus = status;
+
+            // Find the send status cell (6th td - index 5)
+            const statusCell = row.querySelectorAll('td')[5];
+            if (!statusCell) return;
+
+            if (status === 'sending') {
+                statusCell.innerHTML = `
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                        <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                        Đang gửi
+                    </span>
+                `;
+            } else if (status === 'success') {
+                statusCell.innerHTML = `
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
+                        <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                        Đã gửi
+                    </span>
+                `;
+            } else if (status === 'failed') {
+                statusCell.innerHTML = `
+                    <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300" title="${error || 'Lỗi gửi'}">
+                        <span class="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                        Thất bại
+                    </span>
+                `;
             }
         },
 
@@ -612,6 +710,83 @@ function employeeManager() {
 
         closeModal() {
             document.getElementById('modal-container').innerHTML = '';
+        },
+
+        async updateStats() {
+            // Update stats cards without page reload
+            try {
+                const response = await fetch('/api/session/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    const imagesEl = document.getElementById('stat-images');
+                    const sentEl = document.getElementById('stat-sent');
+                    const pendingEl = document.getElementById('stat-pending');
+                    if (imagesEl) imagesEl.textContent = stats.images_generated || 0;
+                    if (sentEl) sentEl.textContent = stats.sent_count || 0;
+                    if (pendingEl) pendingEl.textContent = stats.pending_count || 0;
+                }
+            } catch (e) {
+                console.error('Failed to update stats:', e);
+            }
+        },
+
+        filterEmployees() {
+            const query = this.searchQuery.toLowerCase().trim();
+            const rows = document.querySelectorAll('[data-employee-id]');
+            let visible = 0;
+
+            // Always update totalCount from actual DOM
+            this.totalCount = rows.length;
+
+            rows.forEach(row => {
+                const name = row.dataset.employeeName || '';
+                const code = row.dataset.employeeCode || '';
+                const phone = row.dataset.employeePhone || '';
+                const hasImage = row.dataset.hasImage === 'true';
+                const sendStatus = row.dataset.sendStatus;
+
+                // Text search filter
+                let matchesSearch = true;
+                if (query) {
+                    matchesSearch = name.includes(query) ||
+                                   code.includes(query) ||
+                                   phone.includes(query);
+                }
+
+                // Status filter
+                let matchesFilter = true;
+                switch (this.activeFilter) {
+                    case 'no_image':
+                        matchesFilter = !hasImage;
+                        break;
+                    case 'has_image':
+                        matchesFilter = hasImage;
+                        break;
+                    case 'not_sent':
+                        matchesFilter = sendStatus !== 'success';
+                        break;
+                    case 'sent':
+                        matchesFilter = sendStatus === 'success';
+                        break;
+                    default: // 'all'
+                        matchesFilter = true;
+                }
+
+                // Apply visibility
+                if (matchesSearch && matchesFilter) {
+                    row.style.display = '';
+                    visible++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            this.visibleCount = visible;
+        },
+
+        setFilter(filter) {
+            this.activeFilter = filter;
+            this.filterEmployees();
         }
     }
 }

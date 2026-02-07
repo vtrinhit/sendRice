@@ -68,6 +68,7 @@ async def index(
     current_session = result.scalar_one_or_none()
 
     employees = []
+    stats = None
     if current_session:
         emp_result = await db.execute(
             select(Employee)
@@ -77,6 +78,17 @@ async def index(
         )
         employees = emp_result.scalars().all()
 
+        # Calculate stats
+        images_generated = sum(1 for e in employees if e.salary_image_url)
+        sent_count = sum(1 for e in employees if e.latest_send_status == 'success')
+        pending_count = sum(1 for e in employees if e.salary_image_url and e.phone and e.latest_send_status != 'success')
+
+        stats = {
+            "images_generated": images_generated,
+            "sent_count": sent_count,
+            "pending_count": pending_count,
+        }
+
     return templates.TemplateResponse(
         "index.html",
         {
@@ -84,6 +96,7 @@ async def index(
             "session": current_session,
             "employees": employees,
             "total_employees": len(employees),
+            "stats": stats,
         }
     )
 
@@ -162,6 +175,9 @@ async def upload_excel(
 
         # Get image config for auto-generation
         image_config = await get_image_config(db)
+
+        # Cancel any running background generation before starting new one
+        await background_image_service.cancel_all_running()
 
         # Query employee records for background generation
         emp_result_for_gen = await db.execute(
@@ -345,6 +361,9 @@ async def generate_all_images(
     # Get image config
     image_config = await get_image_config(db)
 
+    # Cancel any running generation before starting new one
+    await background_image_service.cancel_all_running()
+
     # Prepare employee data
     employees_for_gen = [
         {
@@ -364,3 +383,57 @@ async def generate_all_images(
     )
 
     return {"status": "started", "total": len(employees)}
+
+
+@router.get("/api/session/current")
+async def get_current_session(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get current active session ID."""
+    result = await db.execute(
+        select(ImportSession)
+        .where(ImportSession.status == "active")
+        .order_by(desc(ImportSession.imported_at))
+        .limit(1)
+    )
+    session = result.scalar_one_or_none()
+
+    if session:
+        return {"session_id": str(session.id)}
+    return {"session_id": None}
+
+
+@router.get("/api/session/stats")
+async def get_session_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get stats for current active session."""
+    result = await db.execute(
+        select(ImportSession)
+        .where(ImportSession.status == "active")
+        .order_by(desc(ImportSession.imported_at))
+        .limit(1)
+    )
+    session = result.scalar_one_or_none()
+
+    if not session:
+        return {"images_generated": 0, "sent_count": 0, "pending_count": 0}
+
+    emp_result = await db.execute(
+        select(Employee)
+        .where(Employee.session_id == session.id)
+        .options(selectinload(Employee.send_history))
+    )
+    employees = emp_result.scalars().all()
+
+    images_generated = sum(1 for e in employees if e.salary_image_url)
+    sent_count = sum(1 for e in employees if e.latest_send_status == 'success')
+    pending_count = sum(1 for e in employees if e.salary_image_url and e.phone and e.latest_send_status != 'success')
+
+    return {
+        "images_generated": images_generated,
+        "sent_count": sent_count,
+        "pending_count": pending_count,
+    }

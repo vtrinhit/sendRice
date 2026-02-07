@@ -76,7 +76,8 @@ async def settings_page(
         "webhook_url": settings.n8n_webhook_url or "",
         "timeout": 30,
         "retry_count": 3,
-        "message_content": ""
+        "message_content": "",
+        "send_delay": 3
     }
 
     return templates.TemplateResponse(
@@ -171,14 +172,16 @@ async def update_webhook_config(
     timeout: int = Form(30),
     retry_count: int = Form(3),
     message_content: str = Form(""),
+    send_delay: int = Form(3),
 ):
     """Update webhook configuration."""
-    logger.info(f"Updating webhook config: url={webhook_url}, timeout={timeout}, retry={retry_count}")
+    logger.info(f"Updating webhook config: url={webhook_url}, timeout={timeout}, retry={retry_count}, delay={send_delay}")
     config = WebhookConfigSchema(
         webhook_url=webhook_url,
         timeout=timeout,
         retry_count=retry_count,
         message_content=message_content,
+        send_delay=send_delay,
     )
     await set_setting(db, "webhook_config", config.model_dump())
     logger.info("Webhook config saved to database")
